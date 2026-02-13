@@ -1,10 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { AnnouncementBanner } from "@/components/layout/announcement-banner";
-import { fetchAnnouncements } from "@/lib/data";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,21 +33,14 @@ export const viewport: Viewport = {
   userScalable: true,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const announcements = await fetchAnnouncements();
-
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">
-        <AnnouncementBanner announcements={announcements} />
-        <Navbar />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
-      </body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
