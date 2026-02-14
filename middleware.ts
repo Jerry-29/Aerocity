@@ -4,6 +4,12 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Bypass auth in development mode for testing
+  const bypassAuth = process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
+  if (bypassAuth && (pathname.startsWith("/admin") || pathname.startsWith("/agent"))) {
+    return NextResponse.next();
+  }
+
   // Allow login page through
   if (pathname === "/login") {
     const authCookie = request.cookies.get("aerocity_auth");

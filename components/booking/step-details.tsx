@@ -30,7 +30,16 @@ export function StepDetails() {
   const handleContinue = () => {
     if (validate()) {
       updateCustomerDetails(name.trim(), mobile.trim(), email.trim());
-      setStep(4);
+      // advance to Review (now step 3)
+      setStep(3);
+      if (typeof window !== "undefined") {
+        const el = document.getElementById("booking-flow");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
   };
 

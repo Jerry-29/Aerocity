@@ -118,7 +118,7 @@ export function StepPayment() {
       {/* Back Button */}
       <div className="mt-6">
         <button
-          onClick={() => setStep(4)}
+          onClick={() => setStep(3)}
           disabled={isProcessing}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >

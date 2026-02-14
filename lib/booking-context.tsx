@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { BookingFormData, TicketCategory, Offer, TicketSelection } from "./types";
 
 interface BookingContextType {
@@ -48,6 +48,25 @@ export function BookingProvider({
 }: BookingProviderProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<BookingFormData>(initialFormData);
+
+  // Auto-apply incoming offer (if any) so UI and ticket unit prices stay consistent
+  useEffect(() => {
+    if (offer && offer.isActive) {
+      setFormData((prev) => {
+        const updatedTickets = prev.tickets.map((t) => {
+          const cat = categories.find((c) => c.id === t.categoryId);
+          if (!cat) return t;
+          const unitPrice = cat.offerPrice ?? cat.basePrice;
+          return {
+            ...t,
+            unitPrice,
+            totalPrice: unitPrice * t.quantity,
+          };
+        });
+        return { ...prev, offerApplied: offer, tickets: updatedTickets };
+      });
+    }
+  }, [offer, categories]);
 
   const updateVisitDate = (date: Date | null) => {
     setFormData((prev) => ({ ...prev, visitDate: date }));
