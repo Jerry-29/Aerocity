@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import "./globals.css";
 
 const inter = Inter({
@@ -40,7 +41,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        <ScrollToTop />
+      </body>
     </html>
   );
 }

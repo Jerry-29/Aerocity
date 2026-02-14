@@ -10,11 +10,12 @@ export function PriceSummary() {
     return null;
   }
 
-  // Calculate savings
+  // Calculate savings using the applied offer (if any)
   const { categories, offer } = useBooking();
+  const appliedOffer = formData.offerApplied ?? offer;
   const savings = ticketSelections.reduce((sum, t) => {
     const cat = categories.find((c) => c.id === t.categoryId);
-    if (!cat || !offer || !cat.offerPrice) return sum;
+    if (!cat || !appliedOffer || !cat.offerPrice) return sum;
     return sum + (cat.basePrice - cat.offerPrice) * t.quantity;
   }, 0);
 
@@ -53,9 +54,9 @@ export function PriceSummary() {
             {formatPrice(totalAmount)}
           </span>
         </div>
-        {formData.offerApplied && (
+        {appliedOffer && (
           <div className="rounded-lg bg-accent/10 px-3 py-2 text-xs text-accent">
-            Offer applied: {formData.offerApplied.name}
+            Offer applied: {appliedOffer.name}
           </div>
         )}
       </div>

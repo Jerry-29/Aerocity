@@ -47,8 +47,8 @@ export function StepReview() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setStep(1)}
+              <button
+                onClick={() => setStep(1)}
               className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
               aria-label="Edit date"
             >
@@ -119,7 +119,7 @@ export function StepReview() {
               Your Details
             </h3>
             <button
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
               aria-label="Edit details"
             >
@@ -154,14 +154,24 @@ export function StepReview() {
       {/* Navigation */}
       <div className="mt-8 flex gap-4">
         <button
-          onClick={() => setStep(3)}
+          onClick={() => setStep(2)}
           className="inline-flex items-center gap-2 rounded-lg border px-6 py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
         <button
-          onClick={() => setStep(5)}
+          onClick={() => {
+            setStep(4);
+            if (typeof window !== "undefined") {
+              const el = document.getElementById("booking-flow");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+              }
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
           className="inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-3 text-sm font-semibold text-accent-foreground transition-all hover:brightness-110"
         >
           <CreditCard className="h-4 w-4" />

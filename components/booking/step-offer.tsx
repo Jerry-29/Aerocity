@@ -4,9 +4,22 @@ import { ArrowRight, ArrowLeft, Tag, CheckCircle, Calendar } from "lucide-react"
 import { useBooking } from "@/lib/booking-context";
 
 export function StepOffer() {
-  const { offer, formData, applyOffer, setStep } = useBooking();
+  const { offer, formData, setStep } = useBooking();
 
-  const isApplied = !!formData.offerApplied;
+  // Offers are applied automatically by the system if active
+  const isApplied = !!offer?.isActive;
+
+  const handleContinue = () => {
+    setStep(3);
+    if (typeof window !== "undefined") {
+      const el = document.getElementById("booking-flow");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -52,22 +65,14 @@ export function StepOffer() {
             </div>
           </div>
 
-          <div className="mt-4 flex gap-3">
-            {!isApplied ? (
-              <button
-                onClick={() => applyOffer(offer)}
-                className="inline-flex items-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-sm font-semibold text-secondary-foreground transition-all hover:brightness-110"
-              >
-                Apply Offer
-              </button>
-            ) : (
-              <button
-                onClick={() => applyOffer(null)}
-                className="inline-flex items-center gap-2 rounded-lg border px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-muted"
-              >
-                Remove Offer
-              </button>
-            )}
+          <div className="mt-4 flex items-center gap-3">
+            <span className="flex items-center gap-2 rounded-full bg-secondary/10 px-3 py-1 text-sm font-medium text-secondary">
+              <CheckCircle className="h-4 w-4" />
+              Offer applied
+            </span>
+            <p className="text-sm text-muted-foreground">
+              This offer is applied automatically. Discount is reflected in the ticket prices.
+            </p>
           </div>
         </div>
       ) : (
@@ -93,7 +98,7 @@ export function StepOffer() {
           Back
         </button>
         <button
-          onClick={() => setStep(3)}
+          onClick={handleContinue}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110"
         >
           Continue

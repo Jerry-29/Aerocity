@@ -44,6 +44,20 @@ export function StepDateTickets() {
   const canContinue =
     formData.visitDate && ticketSelections.length > 0 && !dateError;
 
+  const handleContinue = () => {
+    // advance step then scroll the booking flow into view so the stepper is visible
+    setStep(2);
+    if (typeof window !== "undefined") {
+      const el = document.getElementById("booking-flow");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      // fallback to top of page
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   // Min date for date picker (tomorrow)
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -149,7 +163,7 @@ export function StepDateTickets() {
         {/* Continue Button */}
         <div className="mt-8">
           <button
-            onClick={() => setStep(2)}
+            onClick={handleContinue}
             disabled={!canContinue}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >

@@ -34,8 +34,8 @@ export const NAV_LINKS = [
 
 export const BOOKING_STEPS = [
   { step: 1, label: "Date & Tickets" },
-  { step: 2, label: "Offers" },
-  { step: 3, label: "Your Details" },
-  { step: 4, label: "Review" },
-  { step: 5, label: "Payment" },
+  // Offer step removed - offers are applied automatically
+  { step: 2, label: "Your Details" },
+  { step: 3, label: "Review" },
+  { step: 4, label: "Payment" },
 ] as const;
