@@ -64,18 +64,18 @@ export default function LoginPage() {
       return;
     }
 
-    // setIsLoading(true);
-    // try {
-    //   await login(tab, {
-    //     email: tab === "admin" ? email : undefined,
-    //     mobile: tab === "agent" ? mobile : undefined,
-    //     password,
-    //   });
-    // } catch (err) {
-    //   setError(err instanceof Error ? err.message : "Login failed");
-    // } finally {
-    //   setIsLoading(false);
-    // }
+    setIsLoading(true);
+    try {
+      await login(tab, {
+        email: tab === "admin" ? email : undefined,
+        mobile: tab === "agent" ? mobile : undefined,
+        password,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSendOtp = async (e: React.FormEvent) => {

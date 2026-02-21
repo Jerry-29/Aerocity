@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Tag,
   Plus,
@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { formatPrice } from "@/lib/utils";
-import { mockOffers, mockAdminTickets } from "@/lib/admin-data";
+import { apiGet, apiPost, apiPut, isSuccessResponse } from "@/lib/api-client";
 import type { AdminOffer, OfferPrice } from "@/lib/admin-types";
 
 const columns: Column<AdminOffer>[] = [
@@ -53,7 +52,11 @@ const emptyForm = {
 };
 
 export default function AdminOffersPage() {
-  const [offers, setOffers] = useState(mockOffers);
+  const [offers, setOffers] = useState<AdminOffer[]>([]);
+  const [tickets, setTickets] = useState<
+    Array<{ id: number; name: string; basePrice: number; offerPrice: number | null }>
+  >([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -62,10 +65,61 @@ export default function AdminOffersPage() {
 
   const activeOffer = offers.find((o) => o.isActive);
 
+  useEffect(() => {
+    void fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [offersRes, ticketsRes] = await Promise.all([
+        apiGet<any>("/api/admin/offers?page=1&pageSize=100"),
+        apiGet<any>("/api/admin/tickets?page=1&pageSize=100"),
+      ]);
+
+      if (!isSuccessResponse(offersRes)) {
+        throw new Error(offersRes.message || "Failed to load offers");
+      }
+      if (!isSuccessResponse(ticketsRes)) {
+        throw new Error(ticketsRes.message || "Failed to load tickets");
+      }
+
+      const mappedOffers: AdminOffer[] = (offersRes.data || []).map((offer: any) => ({
+        id: offer.id,
+        name: offer.name,
+        startDate: new Date(offer.startDate).toISOString().split("T")[0],
+        endDate: new Date(offer.endDate).toISOString().split("T")[0],
+        isActive: !!offer.isActive,
+        prices: (offer.offerPrices || []).map((p: any) => ({
+          ticketCategoryId: p.ticketId,
+          ticketName: p.ticket?.name || "Unknown",
+          offerPrice: Number(p.offerPrice),
+        })),
+        createdAt: offer.createdAt,
+      }));
+      setOffers(mappedOffers);
+
+      const mappedTickets = (ticketsRes.data || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        basePrice: Number(t.basePrice),
+        offerPrice: t.offerPrice === null ? null : Number(t.offerPrice),
+      }));
+      setTickets(mappedTickets);
+    } catch (err) {
+      console.error("Failed to load offers page data:", err);
+      setError(err instanceof Error ? err.message : "Failed to load offers");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openCreate = () => {
     setEditingId(null);
     const defaultPrices: Record<number, number> = {};
-    mockAdminTickets.forEach((t) => {
+    tickets.forEach((t) => {
       defaultPrices[t.id] = t.offerPrice || t.basePrice;
     });
     setForm({ ...emptyForm, prices: defaultPrices });
@@ -106,46 +160,59 @@ export default function AdminOffersPage() {
     setSaving(true);
     await new Promise((r) => setTimeout(r, 600));
 
-    const prices: OfferPrice[] = mockAdminTickets.map((t) => ({
+    const prices: OfferPrice[] = tickets.map((t) => ({
       ticketCategoryId: t.id,
       ticketName: t.name,
       offerPrice: form.prices[t.id] || t.basePrice,
     }));
 
-    if (editingId) {
-      setOffers((prev) =>
-        prev.map((o) =>
-          o.id === editingId
-            ? {
-                ...o,
-                name: form.name,
-                startDate: form.startDate,
-                endDate: form.endDate,
-                prices,
-              }
-            : o
-        )
-      );
-    } else {
-      const newOffer: AdminOffer = {
-        id: Date.now(),
+    try {
+      const payload = {
         name: form.name,
         startDate: form.startDate,
         endDate: form.endDate,
         isActive: false,
-        prices,
-        createdAt: new Date().toISOString(),
+        offerPrices: prices.map((p) => ({
+          ticketId: p.ticketCategoryId,
+          offerPrice: p.offerPrice,
+        })),
       };
-      setOffers((prev) => [newOffer, ...prev]);
+
+      const response = editingId
+        ? await apiPut(`/api/admin/offers/${editingId}`, payload)
+        : await apiPost("/api/admin/offers", payload);
+
+      if (!isSuccessResponse(response as any)) {
+        throw new Error((response as any).message || "Failed to save offer");
+      }
+
+      setShowForm(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save offer");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowForm(false);
   };
 
-  const toggleActive = (id: number) => {
-    setOffers((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, isActive: !o.isActive } : o))
-    );
+  const toggleActive = async (id: number) => {
+    try {
+      const offer = offers.find((o) => o.id === id);
+      if (!offer) return;
+
+      const response = await apiPut(`/api/admin/offers/${id}`, {
+        isActive: !offer.isActive,
+      });
+      if (!isSuccessResponse(response as any)) {
+        throw new Error((response as any).message || "Failed to update offer");
+      }
+
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update offer");
+    }
   };
 
   return (
@@ -194,6 +261,18 @@ export default function AdminOffersPage() {
             <XCircle className="h-3.5 w-3.5" />
             Deactivate
           </button>
+        </div>
+      )}
+
+      {loading && (
+        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          Loading offers...
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
         </div>
       )}
 
@@ -319,7 +398,7 @@ export default function AdminOffersPage() {
                   Offer Prices per Category
                 </p>
                 <div className="flex flex-col gap-2">
-                  {mockAdminTickets.map((t) => (
+                  {tickets.map((t) => (
                     <div
                       key={t.id}
                       className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"

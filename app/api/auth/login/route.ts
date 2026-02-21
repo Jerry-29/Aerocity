@@ -1,73 +1,92 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { API_BASE_URL } from "@/lib/api";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db";
+import { generateToken } from "@/lib/jwt-utils";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { type, email, mobile, password } = body;
+    const isAdmin = type === "admin";
 
-    const endpoint =
-      type === "admin"
-        ? "/api/auth/admin/login"
-        : "/api/auth/agent/login";
-
-    const payload =
-      type === "admin"
-        ? { email, password }
-        : { mobile, password };
-
-    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const error = await res.text();
-      let message = "Invalid credentials";
-      try {
-        const parsed = JSON.parse(error);
-        message = parsed.message || message;
-      } catch {
-        // use default message
-      }
-      return NextResponse.json({ message }, { status: res.status });
+    if (!password || (isAdmin ? !email : !mobile)) {
+      return NextResponse.json(
+        { message: "Missing required login fields" },
+        { status: 400 },
+      );
     }
 
-    const data = await res.json();
+    const user = await prisma.user.findFirst({
+      where: isAdmin
+        ? { email: email, role: "ADMIN" }
+        : { mobile: mobile, role: "AGENT" },
+    });
+
+    if (!user) {
+      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+    }
+
+    if (user.status !== "ACTIVE") {
+      return NextResponse.json(
+        { message: `Account is ${user.status.toLowerCase()}` },
+        { status: 403 },
+      );
+    }
+
+    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordOk) {
+      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+    }
+
+    const sessionUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email || undefined,
+      mobile: user.mobile,
+      role: user.role,
+      status: user.status,
+    };
+    const token = generateToken(sessionUser);
 
     const cookieStore = await cookies();
-    cookieStore.set("aerocity_auth", JSON.stringify({
-      token: data.token,
-      user: data.user || {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        mobile: data.mobile,
-        role: type === "admin" ? "ADMIN" : "AGENT",
+    cookieStore.set(
+      "aerocity_auth",
+      JSON.stringify({
+        token,
+        user: {
+          id: sessionUser.id,
+          name: sessionUser.name,
+          email: sessionUser.email,
+          mobile: sessionUser.mobile,
+          role: sessionUser.role,
+          status: sessionUser.status,
+        },
+      }),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24, // 24 hours
       },
-    }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24, // 24 hours
-    });
+    );
 
     return NextResponse.json({
-      user: data.user || {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        mobile: data.mobile,
-        role: type === "admin" ? "ADMIN" : "AGENT",
+      user: {
+        id: sessionUser.id,
+        name: sessionUser.name,
+        email: sessionUser.email,
+        mobile: sessionUser.mobile,
+        role: sessionUser.role,
+        status: sessionUser.status,
       },
-      token: data.token,
+      token,
     });
-  } catch {
+  } catch (error) {
+    console.error("Login API error:", error);
     return NextResponse.json(
-      { message: "Something went wrong. Please try again." },
+      { message: "Something went wrong. Please try again.", error: String(error) },
       { status: 500 }
     );
   }

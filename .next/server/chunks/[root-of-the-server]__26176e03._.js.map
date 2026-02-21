@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 55, "column": 0}, "map": {"version":3,"sources":["file:///D:/G/Aerocity/AEROCITY-FE/Aerocity/app/api/auth/me/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\nimport { cookies } from \"next/headers\";\r\n\r\nexport async function GET() {\r\n  const cookieStore = await cookies();\r\n  const authCookie = cookieStore.get(\"aerocity_auth\");\r\n\r\n  if (!authCookie) {\r\n    return NextResponse.json({ message: \"Not authenticated\" }, { status: 401 });\r\n  }\r\n\r\n  try {\r\n    const data = JSON.parse(authCookie.value);\r\n    return NextResponse.json({ user: data.user, token: data.token });\r\n  } catch {\r\n    return NextResponse.json({ message: \"Invalid session\" }, { status: 401 });\r\n  }\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;AACA;;;AAEO,eAAe;IACpB,MAAM,cAAc,MAAM,IAAA,4QAAO;IACjC,MAAM,aAAa,YAAY,GAAG,CAAC;IAEnC,IAAI,CAAC,YAAY;QACf,OAAO,gRAAY,CAAC,IAAI,CAAC;YAAE,SAAS;QAAoB,GAAG;YAAE,QAAQ;QAAI;IAC3E;IAEA,IAAI;QACF,MAAM,OAAO,KAAK,KAAK,CAAC,WAAW,KAAK;QACxC,OAAO,gRAAY,CAAC,IAAI,CAAC;YAAE,MAAM,KAAK,IAAI;YAAE,OAAO,KAAK,KAAK;QAAC;IAChE,EAAE,OAAM;QACN,OAAO,gRAAY,CAAC,IAAI,CAAC;YAAE,SAAS;QAAkB,GAAG;YAAE,QAAQ;QAAI;IACzE;AACF","debugId":null}}]
+}

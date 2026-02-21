@@ -6,6 +6,7 @@ import type {
   Attraction,
   GalleryItem,
 } from "./types";
+import { prisma } from "@/lib/db";
 
 export const ticketCategories: TicketCategory[] = [
   {
@@ -57,7 +58,7 @@ export const ticketCategories: TicketCategory[] = [
     slug: "kid-without-food",
     description: "Full day access for children (3-12 years)",
     basePrice: 600,
-    offerPrice: 499,
+    offerPrice: 300,
     includes: [
       "All rides & attractions",
       "Locker facility",
@@ -290,7 +291,63 @@ export const galleryItems: GalleryItem[] = [
 
 // Async mock data fetchers (ready to swap with real API calls)
 export async function fetchTicketCategories(): Promise<TicketCategory[]> {
-  return ticketCategories;
+  try {
+    const now = new Date();
+    const [tickets, activeOffers] = await Promise.all([
+      prisma.ticket.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          customerPrice: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.offer.findMany({
+        where: {
+          isActive: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        include: {
+          offerPrices: true,
+        },
+      }),
+    ]);
+
+    return tickets.map((ticket: any) => {
+      let bestOfferPrice: number | null = null;
+      for (const offer of activeOffers) {
+        for (const offerPrice of offer.offerPrices) {
+          if (offerPrice.ticketId === ticket.id) {
+            const candidate = Number(offerPrice.offerPrice);
+            if (bestOfferPrice === null || candidate < bestOfferPrice) {
+              bestOfferPrice = candidate;
+            }
+          }
+        }
+      }
+
+      const fallback = ticketCategories.find((t) => t.slug === ticket.slug);
+      return {
+        id: ticket.id,
+        name: ticket.name,
+        slug: ticket.slug,
+        description: ticket.description || "",
+        basePrice: Number(ticket.customerPrice),
+        offerPrice: bestOfferPrice,
+        includes:
+          fallback?.includes && fallback.includes.length > 0
+            ? fallback.includes
+            : ["All rides and attractions access"],
+      } satisfies TicketCategory;
+    });
+  } catch (error) {
+    console.error("fetchTicketCategories fallback to mock data:", error);
+    return ticketCategories;
+  }
 }
 
 export async function fetchActiveOffer(): Promise<Offer | null> {

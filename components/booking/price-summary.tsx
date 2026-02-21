@@ -4,14 +4,13 @@ import { useBooking } from "@/lib/booking-context";
 import { formatPrice } from "@/lib/utils";
 
 export function PriceSummary() {
-  const { ticketSelections, totalAmount, formData } = useBooking();
+  const { ticketSelections, totalAmount, formData, categories, offer } = useBooking();
 
   if (ticketSelections.length === 0) {
     return null;
   }
 
   // Calculate savings using the applied offer (if any)
-  const { categories, offer } = useBooking();
   const appliedOffer = formData.offerApplied ?? offer;
   const savings = ticketSelections.reduce((sum, t) => {
     const cat = categories.find((c) => c.id === t.categoryId);

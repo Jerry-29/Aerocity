@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  AGENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum BookedByRole {
+  CUSTOMER
+  AGENT
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaCategory {
+  GALLERY
+  ATTRACTION
+  GENERAL
+}
+
+// ============================================================================
+// USER MODELS
+// ============================================================================
+
+model User {
+  id                Int      @id @default(autoincrement())
+  name              String
+  mobile            String   @unique
+  email             String?  @unique
+  passwordHash      String
+  role              UserRole
+  status            UserStatus @default(ACTIVE)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  bookings          Booking[]
+
+  @@index([role])
+  @@index([status])
+}
+
+// ============================================================================
+// TICKET MODELS
+// ============================================================================
+
+model Ticket {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  slug              String   @unique
+  description       String?
+  customerPrice     Decimal
+  agentPrice        Decimal
+  heightRequirement Int?     // in cm, nullable for no restriction
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  bookingItems      BookingItem[]
+  offerPrices       OfferTicketPrice[]
+
+  @@index([isActive])
+}
+
+// ============================================================================
+// OFFER MODELS
+// ============================================================================
+
+model Offer {
+  id                Int      @id @default(autoincrement())
+  name              String
+  description       String?
+  startDate         DateTime @db.Date
+  endDate           DateTime @db.Date
+  isActive          Boolean  @default(true)
+  appliesToAllCustomers Boolean @default(true) // Currently always true
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  offerPrices       OfferTicketPrice[]
+  bookings          Booking[]
+
+  @@index([isActive])
+  @@index([startDate, endDate])
+}
+
+model OfferTicketPrice {
+  id                Int      @id @default(autoincrement())
+  offerId           Int
+  ticketId          Int
+  offerPrice        Decimal
+  createdAt         DateTime @default(now())
+
+  // Relations
+  offer             Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  ticket            Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, ticketId])
+  @@index([offerId])
+  @@index([ticketId])
+}
+
+// ============================================================================
+// BOOKING MODELS
+// ============================================================================
+
+model Booking {
+  id                Int      @id @default(autoincrement())
+  bookingReference  String   @unique @db.VarChar(36) // UUID format
+  visitDate         DateTime @db.Date
+  bookedByRole      BookedByRole
+  agentId           Int?     // Nullable for customer bookings
+  
+  // Customer Information
+  customerName      String
+  customerMobile    String
+  customerEmail     String
+
+  // Pricing
+  totalAmount       Decimal
+  offerId           Int?
+
+  // Payment Information
+  paymentStatus     BookingStatus @default(PENDING)
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?       @unique
+
+  // Gate Entry Validation
+  isValidated       Boolean  @default(false)
+  validatedAt       DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  bookingItems      BookingItem[]
+  offer             Offer?   @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  agent             User?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([bookingReference])
+  @@index([visitDate])
+  @@index([paymentStatus])
+  @@index([agentId])
+  @@index([offerId])
+  @@index([bookedByRole])
+}
+
+model BookingItem {
+  id                Int      @id @default(autoincrement())
+  bookingId         Int
+  ticketId          Int
+  quantity          Int
+  basePrice         Decimal
+  appliedPrice      Decimal
+  isOfferApplied    Boolean  @default(false)
+  totalPrice        Decimal
+  createdAt         DateTime @default(now())
+
+  // Relations
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ticket            Ticket   @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId])
+  @@index([ticketId])
+}
+
+// ============================================================================
+// TESTIMONIAL MODELS
+// ============================================================================
+
+model Testimonial {
+  id                Int      @id @default(autoincrement())
+  name              String
+  email             String?
+  mobile            String?
+  rating            Int      // 1-5 stars
+  content           String
+  imageUrl          String?
+  visitDate         DateTime @db.Date
+  isApproved        Boolean  @default(false)
+  isFeatured        Boolean  @default(false)
+  displayOrder      Int      @default(9999)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isApproved])
+  @@index([isFeatured])
+  @@index([displayOrder])
+}
+
+// ============================================================================
+// ANNOUNCEMENT MODELS
+// ============================================================================
+
+model Announcement {
+  id                Int      @id @default(autoincrement())
+  title             String
+  content           String
+  type              String   @default("info") // promotion | info | warning
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+// ============================================================================
+// MEDIA MODELS
+// ============================================================================
+
+model Media {
+  id                Int      @id @default(autoincrement())
+  type              MediaType
+  url               String
+  thumbnailUrl      String?
+  category          MediaCategory
+  isPublic          Boolean  @default(true)
+  uploadedBy        String? // User identifier/email
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPublic])
+}
+
+// ============================================================================
+// ATTRACTION MODELS
+// ============================================================================
+
+model Attraction {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  slug              String   @unique
+  description       String
+  category          String   // thrill | family | kids | relaxation
+  imageUrl          String
+  heightRequirement Int?     // in cm, nullable for no restriction
+  isActive          Boolean  @default(true)
+  displayOrder      Int      @default(9999)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+  @@index([displayOrder])
+}

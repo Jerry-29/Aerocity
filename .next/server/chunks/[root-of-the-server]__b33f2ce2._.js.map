@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 55, "column": 0}, "map": {"version":3,"sources":["file:///D:/G/Aerocity/AEROCITY-FE/Aerocity/app/api/whatsapp/webhook/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\n\r\nexport async function GET(req: Request) {\r\n  const { searchParams } = new URL(req.url);\r\n\r\n  const mode = searchParams.get(\"hub.mode\");\r\n  const token = searchParams.get(\"hub.verify_token\");\r\n  const challenge = searchParams.get(\"hub.challenge\");\r\n  console.log(mode,token,challenge)\r\n  const VERIFY_TOKEN = \"aerocity_whatsapp_verify_token_123\";\r\n\r\n  if (mode === \"subscribe\" && token === VERIFY_TOKEN) {\r\n    console.log(\"Webhook verified\");\r\n    return new NextResponse(challenge, { status: 200 });\r\n  }\r\n\r\n  return new NextResponse(\"Verification failed\", { status: 403 });\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;;AAEO,eAAe,IAAI,GAAY;IACpC,MAAM,EAAE,YAAY,EAAE,GAAG,IAAI,IAAI,IAAI,GAAG;IAExC,MAAM,OAAO,aAAa,GAAG,CAAC;IAC9B,MAAM,QAAQ,aAAa,GAAG,CAAC;IAC/B,MAAM,YAAY,aAAa,GAAG,CAAC;IACnC,QAAQ,GAAG,CAAC,MAAK,OAAM;IACvB,MAAM,eAAe;IAErB,IAAI,SAAS,eAAe,UAAU,cAAc;QAClD,QAAQ,GAAG,CAAC;QACZ,OAAO,IAAI,gRAAY,CAAC,WAAW;YAAE,QAAQ;QAAI;IACnD;IAEA,OAAO,IAAI,gRAAY,CAAC,uBAAuB;QAAE,QAAQ;IAAI;AAC/D","debugId":null}}]
+}

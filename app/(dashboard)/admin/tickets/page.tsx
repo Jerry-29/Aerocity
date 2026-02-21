@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Ticket,
   IndianRupee,
@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatPrice } from "@/lib/utils";
-import { mockAdminTickets } from "@/lib/admin-data";
 import type { AdminTicketCategory } from "@/lib/admin-types";
+import { apiGet, apiPut, isSuccessResponse } from "@/lib/api-client";
 
 export default function AdminTicketsPage() {
-  const [tickets, setTickets] = useState(mockAdminTickets);
+  const [tickets, setTickets] = useState<AdminTicketCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
   const [editing, setEditing] = useState<AdminTicketCategory | null>(null);
   const [form, setForm] = useState({
     basePrice: 0,
@@ -24,7 +26,30 @@ export default function AdminTicketsPage() {
     agentPrice: 0,
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const hasFetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await apiGet<AdminTicketCategory[]>("/api/admin/tickets");
+      if (!isSuccessResponse(data)) {
+        throw new Error(data.message || "Failed to load tickets");
+      }
+      setTickets(data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch tickets:", err);
+      setError(err instanceof Error ? err.message : "Failed to load tickets");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openEdit = (t: AdminTicketCategory) => {
     setEditing(t);
@@ -47,21 +72,22 @@ export default function AdminTicketsPage() {
       return;
     }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === editing?.id
-          ? {
-              ...t,
-              basePrice: form.basePrice,
-              offerPrice: form.offerPrice || null,
-              agentPrice: form.agentPrice,
-            }
-          : t
-      )
-    );
-    setSaving(false);
-    setEditing(null);
+    try {
+      if (editing?.id) {
+        await apiPut(`/api/admin/tickets/${editing.id}`, {
+          basePrice: form.basePrice,
+          offerPrice: form.offerPrice || null,
+          agentPrice: form.agentPrice,
+        });
+        fetchTickets();
+      }
+    } catch (err) {
+      console.error("Failed to save ticket:", err);
+      setError(err instanceof Error ? err.message : "Failed to save ticket");
+    } finally {
+      setSaving(false);
+      setEditing(null);
+    }
   };
 
   const toggleActive = (id: number) => {
@@ -81,90 +107,109 @@ export default function AdminTicketsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {tickets.map((t) => (
-          <div
-            key={t.id}
-            className="flex flex-col rounded-xl border bg-card p-5 shadow-sm"
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading tickets...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={fetchTickets}
+            className="mt-2 text-sm font-medium text-red-600 hover:text-red-700"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Ticket className="h-5 w-5 text-primary" />
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Tickets Grid */}
+      {!loading && !error && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {tickets.map((t) => (
+            <div
+              key={t.id}
+              className="flex flex-col rounded-xl border bg-card p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Ticket className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {t.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {t.description}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {t.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {t.description}
+                <StatusBadge status={t.isActive ? "ACTIVE" : "INACTIVE"} />
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg bg-muted/50 p-3">
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Base
+                  </p>
+                  <p className="text-sm font-bold text-foreground">
+                    {formatPrice(t.basePrice)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Offer
+                  </p>
+                  <p className="text-sm font-bold text-green-600">
+                    {t.offerPrice ? formatPrice(t.offerPrice) : "---"}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Agent
+                  </p>
+                  <p className="text-sm font-bold text-secondary">
+                    {formatPrice(t.agentPrice)}
                   </p>
                 </div>
               </div>
-              <StatusBadge status={t.isActive ? "ACTIVE" : "INACTIVE"} />
-            </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3 rounded-lg bg-muted/50 p-3">
-              <div className="text-center">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Base
-                </p>
-                <p className="text-sm font-bold text-foreground">
-                  {formatPrice(t.basePrice)}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Offer
-                </p>
-                <p className="text-sm font-bold text-green-600">
-                  {t.offerPrice ? formatPrice(t.offerPrice) : "---"}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Agent
-                </p>
-                <p className="text-sm font-bold text-secondary">
-                  {formatPrice(t.agentPrice)}
-                </p>
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(t);
+                    setForm({
+                      basePrice: t.basePrice,
+                      offerPrice: t.offerPrice ?? 0,
+                      agentPrice: t.agentPrice,
+                    });
+                  }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit Pricing
+                </button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => openEdit(t)}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Pricing
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleActive(t.id)}
-                className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  t.isActive
-                    ? "text-destructive hover:bg-destructive/10"
-                    : "text-green-600 hover:bg-green-50"
-                }`}
-              >
-                {t.isActive ? (
-                  <>
-                    <XCircle className="h-3.5 w-3.5" />
-                    Deactivate
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Activate
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* No tickets message */}
+      {!loading && !error && tickets.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No tickets found</p>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editing && (

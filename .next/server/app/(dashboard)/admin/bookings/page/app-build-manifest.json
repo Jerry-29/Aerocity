@@ -1,0 +1,27 @@
+{
+  "pages": {
+    "/(dashboard)/admin/bookings/page": [
+      "static/chunks/[root-of-the-server]__bbfb9fb8._.css",
+      "static/chunks/node_modules__pnpm_cb63d429._.js",
+      "static/chunks/components_scroll-to-top_tsx_745279b9._.js",
+      "static/chunks/app_layout_tsx_f5aa58b0._.js",
+      "static/chunks/9ea42_next_dist_client_components_builtin_global-error_f116d93a.js",
+      "static/chunks/_8aac0c6c._.js",
+      "static/chunks/app_(dashboard)_layout_tsx_f116d93a._.js",
+      "static/chunks/node_modules__pnpm_6d8b7d29._.js",
+      "static/chunks/_3be310d7._.js",
+      "static/chunks/app_(dashboard)_admin_layout_tsx_aa4e286a._.js",
+      "static/chunks/_356ecffe._.js",
+      "static/chunks/app_(dashboard)_admin_bookings_page_tsx_d4c06632._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_415e865e._.js",
+      "static/chunks/9ea42_next_dist_compiled_react-dom_3bef5fa5._.js",
+      "static/chunks/9ea42_next_dist_compiled_next-devtools_index_75158550.js",
+      "static/chunks/9ea42_next_dist_compiled_8cf71ef8._.js",
+      "static/chunks/9ea42_next_dist_client_ccc97b1d._.js",
+      "static/chunks/9ea42_next_dist_a61b97c1._.js",
+      "static/chunks/69652_@swc_helpers_cjs_77b72907._.js",
+      "static/chunks/_a0ff3932._.js",
+      "static/chunks/turbopack-_b4d4d6db._.js"
+    ]
+  }
+}
