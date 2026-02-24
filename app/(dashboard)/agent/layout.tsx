@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, PlusCircle, CalendarCheck } from "lucide-react";
+import { LayoutDashboard, PlusCircle, CalendarCheck, LifeBuoy } from "lucide-react";
 import { Sidebar, type SidebarLink } from "@/components/dashboard/sidebar";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
@@ -8,6 +8,7 @@ const agentLinks: SidebarLink[] = [
   { label: "Dashboard", href: "/agent", icon: LayoutDashboard },
   { label: "Book Tickets", href: "/agent/book", icon: PlusCircle },
   { label: "My Bookings", href: "/agent/bookings", icon: CalendarCheck },
+  { label: "Help", href: "/agent/help", icon: LifeBuoy },
 ];
 
 export default function AgentLayout({

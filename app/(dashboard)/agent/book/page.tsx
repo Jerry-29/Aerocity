@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
@@ -17,8 +17,9 @@ import {
   Banknote,
   Ticket,
 } from "lucide-react";
-import { cn, formatPrice, validateMobile, validateEmail, generateBookingReference } from "@/lib/utils";
-import { mockAdminTickets } from "@/lib/admin-data";
+import { cn, formatPrice, validateMobile, validateEmail } from "@/lib/utils";
+import { apiGet, apiPost, isSuccessResponse } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 
 interface TicketSelection {
   categoryId: number;
@@ -26,6 +27,26 @@ interface TicketSelection {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+}
+
+type RazorpayResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+interface TicketOption {
+  id: number;
+  name: string;
+  description: string;
+  agentPrice: number;
+  customerPrice: number;
 }
 
 const STEPS = [
@@ -37,6 +58,7 @@ const STEPS = [
 
 export default function AgentBookPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [visitDate, setVisitDate] = useState("");
   const [tickets, setTickets] = useState<Record<number, number>>({});
@@ -50,9 +72,12 @@ export default function AgentBookPage() {
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
+  const [availableTickets, setAvailableTickets] = useState<TicketOption[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [razorpayReady, setRazorpayReady] = useState(false);
 
   const selections: TicketSelection[] = useMemo(() => {
-    return mockAdminTickets
+    return availableTickets
       .filter((t) => (tickets[t.id] || 0) > 0)
       .map((t) => ({
         categoryId: t.id,
@@ -61,10 +86,54 @@ export default function AgentBookPage() {
         unitPrice: t.agentPrice,
         totalPrice: t.agentPrice * tickets[t.id],
       }));
-  }, [tickets]);
+  }, [availableTickets, tickets]);
 
   const totalAmount = selections.reduce((s, t) => s + t.totalPrice, 0);
   const totalTickets = selections.reduce((s, t) => s + t.quantity, 0);
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      setTicketsLoading(true);
+      setError("");
+      const response = await apiGet<TicketOption[]>("/api/tickets");
+      if (!isSuccessResponse(response)) {
+        setError(response.error || response.message || "Failed to load tickets");
+        setAvailableTickets([]);
+        setTicketsLoading(false);
+        return;
+      }
+      const data = Array.isArray(response.data) ? response.data : [];
+      setAvailableTickets(
+        data.map((ticket) => ({
+          id: ticket.id,
+          name: ticket.name,
+          description: ticket.description,
+          agentPrice: Number(ticket.agentPrice),
+          customerPrice: Number(ticket.customerPrice),
+        })),
+      );
+      setTicketsLoading(false);
+    };
+    fetchTickets();
+  }, []);
+
+  useEffect(() => {
+    const existing = document.getElementById("razorpay-checkout");
+    if (existing) {
+      setRazorpayReady(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "razorpay-checkout";
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setRazorpayReady(true);
+    script.onerror = () => {
+      setRazorpayReady(false);
+      setError("Failed to load payment system. Please refresh.");
+    };
+    document.body.appendChild(script);
+  }, []);
 
   const updateQty = (id: number, delta: number) => {
     setTickets((prev) => {
@@ -75,7 +144,7 @@ export default function AgentBookPage() {
   };
 
   const canNext = () => {
-    if (step === 1) return visitDate && totalTickets > 0;
+    if (step === 1) return !ticketsLoading && visitDate && totalTickets > 0;
     if (step === 2)
       return name.trim() && validateMobile(mobile);
     if (step === 3) return true;
@@ -101,14 +170,133 @@ export default function AgentBookPage() {
     setStep((s) => s + 1);
   };
 
+  const downloadTicket = async (reference: string) => {
+    try {
+      const response = await fetch(`/api/bookings/${reference}/ticket`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to download ticket");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${reference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download ticket");
+    }
+  };
+
   const handlePay = async () => {
     setProcessing(true);
     setError("");
-    await new Promise((r) => setTimeout(r, 1500));
-    const ref = generateBookingReference();
-    setBookingRef(ref);
-    setCompleted(true);
-    setProcessing(false);
+    try {
+      if (!user?.id) {
+        setError("Agent session is missing. Please log in again.");
+        return;
+      }
+      const items = selections.map((item) => ({
+        ticketId: item.categoryId,
+        quantity: item.quantity,
+      }));
+
+      const response = await apiPost<{
+        bookingReference: string;
+        totalAmount: number | string;
+        razorpayOrderId?: string | null;
+      }>("/api/bookings", {
+        visitDate,
+        items,
+        customerName: name.trim(),
+        customerMobile: mobile.trim(),
+        customerEmail: email.trim() || undefined,
+        bookedByRole: "AGENT",
+        agentId: user.id,
+        paymentMethod,
+      });
+
+      if (!isSuccessResponse(response)) {
+        setError(response.error || response.message || "Failed to create booking");
+        return;
+      }
+
+      const createdBooking = response.data;
+
+      if (paymentMethod === "ONLINE") {
+        if (!razorpayReady || !window.Razorpay) {
+          setError("Payment system is not ready. Please refresh and try again.");
+          return;
+        }
+
+        const razorpayOrderId = createdBooking.razorpayOrderId;
+        if (!razorpayOrderId) {
+          setError("Missing payment order. Please try again.");
+          return;
+        }
+
+        const amount = Number(createdBooking.totalAmount) || 0;
+
+        const razorpay = new window.Razorpay({
+          key:
+            process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+            process.env.RAZORPAY_KEY_ID,
+          order_id: razorpayOrderId,
+          amount: Math.round(amount * 100),
+          currency: "INR",
+          name: "Aerocity",
+          description: `Booking ${createdBooking.bookingReference}`,
+          prefill: {
+            name: name.trim(),
+            email: email.trim() || "",
+            contact: mobile.trim(),
+          },
+          handler: async (response: RazorpayResponse) => {
+            const verify = await apiPost("/api/bookings/verify-payment", {
+              bookingReference: createdBooking.bookingReference,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              amount,
+            });
+
+            if (!isSuccessResponse(verify)) {
+              setError(verify.error || verify.message || "Payment verification failed");
+              setProcessing(false);
+              return;
+            }
+
+            setBookingRef(createdBooking.bookingReference);
+            setCompleted(true);
+            setProcessing(false);
+            downloadTicket(createdBooking.bookingReference);
+          },
+          modal: {
+            ondismiss: () => {
+              setProcessing(false);
+              setError("Payment cancelled. Please try again.");
+            },
+          },
+        });
+
+        razorpay.open();
+        return;
+      }
+
+      setBookingRef(createdBooking.bookingReference);
+      setCompleted(true);
+      downloadTicket(createdBooking.bookingReference);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create booking");
+    } finally {
+      if (paymentMethod !== "ONLINE") {
+        setProcessing(false);
+      }
+    }
   };
 
   const today = new Date().toISOString().split("T")[0];
@@ -261,53 +449,64 @@ export default function AgentBookPage() {
                 <h3 className="text-sm font-semibold text-foreground">
                   Select Tickets (Agent Pricing)
                 </h3>
-                {mockAdminTickets.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
-                        <Ticket className="h-5 w-5 text-secondary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {t.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {t.description}
-                        </p>
-                        <p className="mt-0.5 text-sm font-bold text-secondary">
-                          {formatPrice(t.agentPrice)}{" "}
-                          <span className="text-xs font-normal text-muted-foreground line-through">
-                            {formatPrice(t.basePrice)}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateQty(t.id, -1)}
-                        disabled={(tickets[t.id] || 0) <= 0}
-                        className="flex h-8 w-8 items-center justify-center rounded-md border text-foreground disabled:opacity-30"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-semibold text-foreground">
-                        {tickets[t.id] || 0}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateQty(t.id, 1)}
-                        disabled={(tickets[t.id] || 0) >= 20}
-                        className="flex h-8 w-8 items-center justify-center rounded-md border text-foreground disabled:opacity-30"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
+                {ticketsLoading && (
+                  <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+                    Loading tickets...
                   </div>
-                ))}
+                )}
+                {!ticketsLoading && availableTickets.length === 0 && (
+                  <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+                    No tickets available right now.
+                  </div>
+                )}
+                {!ticketsLoading &&
+                  availableTickets.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between rounded-xl border bg-card p-4 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
+                          <Ticket className="h-5 w-5 text-secondary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {t.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t.description}
+                          </p>
+                          <p className="mt-0.5 text-sm font-bold text-secondary">
+                            {formatPrice(t.agentPrice)}{" "}
+                            <span className="text-xs font-normal text-muted-foreground line-through">
+                              {formatPrice(t.customerPrice)}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updateQty(t.id, -1)}
+                          disabled={(tickets[t.id] || 0) <= 0}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border text-foreground disabled:opacity-30"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-semibold text-foreground">
+                          {tickets[t.id] || 0}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQty(t.id, 1)}
+                          disabled={(tickets[t.id] || 0) >= 20}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border text-foreground disabled:opacity-30"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           )}

@@ -7,6 +7,7 @@ export interface AuthUser {
   email?: string;
   mobile?: string;
   role: "ADMIN" | "AGENT";
+  mustResetPassword?: boolean;
 }
 
 export interface LoginRequest {

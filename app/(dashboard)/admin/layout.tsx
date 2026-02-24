@@ -3,6 +3,7 @@
 import {
   LayoutDashboard,
   CalendarCheck,
+  PlusCircle,
   Ticket,
   Tag,
   Users,
@@ -16,6 +17,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 const adminLinks: SidebarLink[] = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Book Tickets", href: "/admin/book", icon: PlusCircle },
   { label: "Bookings", href: "/admin/bookings", icon: CalendarCheck },
   { label: "Tickets & Pricing", href: "/admin/tickets", icon: Ticket },
   { label: "Offers", href: "/admin/offers", icon: Tag },

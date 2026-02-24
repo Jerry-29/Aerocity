@@ -6,6 +6,7 @@ import { validateUserCreationRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse, createPaginatedResponse } from "@/lib/responses";
 import { ForbiddenError, ValidationError, ConflictError } from "@/lib/errors";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,8 +52,42 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
+    const userIds = users.map((u) => u.id);
+
+    const bookingStats =
+      userIds.length > 0
+        ? await prisma.booking.groupBy({
+            by: ["agentId"],
+            where: {
+              agentId: { in: userIds },
+              bookedByRole: "AGENT",
+            },
+            _count: { _all: true },
+            _sum: { totalAmount: true },
+          })
+        : [];
+
+    const statsMap = new Map<number, { totalBookings: number; totalRevenue: Prisma.Decimal | number }>();
+    for (const s of bookingStats) {
+      if (s.agentId === null || s.agentId === undefined) continue;
+      const revenue = s._sum?.totalAmount || 0;
+      statsMap.set(s.agentId, {
+        totalBookings: s._count?._all || 0,
+        totalRevenue: revenue,
+      });
+    }
+
+    const usersWithStats = users.map((u) => {
+      const stats = statsMap.get(u.id) || { totalBookings: 0, totalRevenue: 0 };
+      return {
+        ...u,
+        totalBookings: stats.totalBookings,
+        totalRevenue: stats.totalRevenue,
+      };
+    });
+
     return NextResponse.json(
-      createPaginatedResponse("Users retrieved", users, page, limit, total),
+      createPaginatedResponse("Users retrieved", usersWithStats, page, limit, total),
       { status: 200 },
     );
   } catch (error: any) {
@@ -85,10 +120,11 @@ export async function POST(request: NextRequest) {
 
     const validation = validateUserCreationRequest(body);
     if (!validation.valid) {
-      throw new ValidationError(validation.message, validation.field);
+      throw new ValidationError(validation.message || "Validation failed", validation.field);
     }
 
     const { name, email, phone, password, role } = body;
+    const normalizedRole = (role || "AGENT").toUpperCase();
 
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
@@ -112,8 +148,9 @@ export async function POST(request: NextRequest) {
         email,
         mobile: phone,
         passwordHash: hashedPassword,
-        role: role || "AGENT",
+        role: normalizedRole,
         status: "ACTIVE",
+        mustResetPassword: normalizedRole === "AGENT",
       },
       select: {
         id: true,

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { auth, error } = await withAuth(request);
     if (error) return error;
 
-    if (auth?.role !== "ADMIN") {
+    if (auth?.role !== "ADMIN" && auth?.role !== "AGENT") {
       throw new ForbiddenError("Only admins can access bookings");
     }
 
@@ -31,12 +31,16 @@ export async function GET(request: NextRequest) {
       where.paymentStatus = status;
     }
 
-    if (agentId) {
-      where.agentId = parseInt(agentId, 10);
-    }
-
-    if (bookedByRole) {
-      where.bookedByRole = bookedByRole;
+    if (auth?.role === "AGENT") {
+      where.agentId = auth.userId;
+      where.bookedByRole = "AGENT";
+    } else {
+      if (agentId) {
+        where.agentId = parseInt(agentId, 10);
+      }
+      if (bookedByRole) {
+        where.bookedByRole = bookedByRole;
+      }
     }
 
     if (isValidated !== undefined) {

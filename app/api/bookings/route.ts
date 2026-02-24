@@ -4,6 +4,7 @@ import { createBooking } from "@/lib/booking-service";
 import { validateBookingRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ValidationError, NotFoundError } from "@/lib/errors";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +15,25 @@ export async function POST(request: NextRequest) {
 
     // Create booking
     const booking = await createBooking(body);
+
+    if (body?.bookedByRole === "AGENT" && body?.paymentMethod === "OFFLINE") {
+      (async () => {
+        try {
+          await sendWhatsAppMessage({
+            phone: booking.customerMobile,
+            name: booking.customerName,
+            bookingId: booking.bookingReference,
+            date: new Date(booking.visitDate).toISOString().split("T")[0],
+            ticketsCount: booking.items.reduce(
+              (sum: number, item: any) => sum + item.quantity,
+              0,
+            ),
+          });
+        } catch (notificationError) {
+          console.error("Offline booking WhatsApp failed:", notificationError);
+        }
+      })();
+    }
 
     return NextResponse.json(
       createSuccessResponse("Booking created successfully", booking),

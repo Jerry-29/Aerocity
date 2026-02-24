@@ -32,6 +32,7 @@ async function main() {
       passwordHash: adminPassword,
       role: "ADMIN",
       status: "ACTIVE",
+      mustResetPassword: false,
     },
   });
 
@@ -43,6 +44,7 @@ async function main() {
       passwordHash: agentPassword,
       role: "AGENT",
       status: "ACTIVE",
+      mustResetPassword: true,
     },
   });
 
@@ -54,6 +56,7 @@ async function main() {
       passwordHash: agentPassword,
       role: "AGENT",
       status: "ACTIVE",
+      mustResetPassword: true,
     },
   });
 

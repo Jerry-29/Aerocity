@@ -8,6 +8,7 @@ export interface SessionUser {
   email?: string;
   role: "ADMIN" | "AGENT";
   status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  mustResetPassword?: boolean;
 }
 
 export interface SessionToken extends JWT {

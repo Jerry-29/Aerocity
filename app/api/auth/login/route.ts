@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { generateToken } from "@/lib/jwt-utils";
+import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     if (!password || (isAdmin ? !email : !mobile)) {
       return NextResponse.json(
-        { message: "Missing required login fields" },
+        createErrorResponse("Missing required login fields", "Validation error"),
         { status: 400 },
       );
     }
@@ -24,19 +25,28 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        createErrorResponse("Invalid credentials", "Authentication failed"),
+        { status: 401 },
+      );
     }
 
     if (user.status !== "ACTIVE") {
       return NextResponse.json(
-        { message: `Account is ${user.status.toLowerCase()}` },
+        createErrorResponse(
+          `Account is ${user.status.toLowerCase()}`,
+          "Account not active",
+        ),
         { status: 403 },
       );
     }
 
     const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
-      return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        createErrorResponse("Invalid credentials", "Authentication failed"),
+        { status: 401 },
+      );
     }
 
     const sessionUser = {
@@ -46,6 +56,7 @@ export async function POST(request: NextRequest) {
       mobile: user.mobile,
       role: user.role,
       status: user.status,
+      mustResetPassword: user.role === "AGENT" ? user.mustResetPassword : false,
     };
     const token = generateToken(sessionUser);
 
@@ -61,6 +72,7 @@ export async function POST(request: NextRequest) {
           mobile: sessionUser.mobile,
           role: sessionUser.role,
           status: sessionUser.status,
+          mustResetPassword: sessionUser.mustResetPassword,
         },
       }),
       {
@@ -72,22 +84,29 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    return NextResponse.json({
-      user: {
-        id: sessionUser.id,
-        name: sessionUser.name,
-        email: sessionUser.email,
-        mobile: sessionUser.mobile,
-        role: sessionUser.role,
-        status: sessionUser.status,
-      },
-      token,
-    });
+    return NextResponse.json(
+      createSuccessResponse("Login successful", {
+        user: {
+          id: sessionUser.id,
+          name: sessionUser.name,
+          email: sessionUser.email,
+          mobile: sessionUser.mobile,
+          role: sessionUser.role,
+          status: sessionUser.status,
+          mustResetPassword: sessionUser.mustResetPassword,
+        },
+        token,
+      }),
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Login API error:", error);
     return NextResponse.json(
-      { message: "Something went wrong. Please try again.", error: String(error) },
-      { status: 500 }
+      createErrorResponse(
+        "Something went wrong. Please try again.",
+        String(error),
+      ),
+      { status: 500 },
     );
   }
 }

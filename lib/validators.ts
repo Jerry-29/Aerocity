@@ -317,7 +317,21 @@ export function validateUserCreationRequest(data: any): ValidationResult {
     return { valid: false, message: "Valid phone is required", field: "phone" };
   }
 
-  if (!data.email || !validateEmail(data.email)) {
+  const role = typeof data.role === "string" ? data.role.toUpperCase() : "AGENT";
+
+  if (data.role && !["ADMIN", "AGENT"].includes(role)) {
+    return {
+      valid: false,
+      message: "role must be ADMIN or AGENT",
+      field: "role",
+    };
+  }
+
+  if (role === "ADMIN") {
+    if (!data.email || !validateEmail(data.email)) {
+      return { valid: false, message: "Valid email is required", field: "email" };
+    }
+  } else if (data.email && !validateEmail(data.email)) {
     return { valid: false, message: "Valid email is required", field: "email" };
   }
 
@@ -330,14 +344,6 @@ export function validateUserCreationRequest(data: any): ValidationResult {
       valid: false,
       message: "password must be at least 6 characters",
       field: "password",
-    };
-  }
-
-  if (data.role && !["ADMIN", "AGENT"].includes(data.role)) {
-    return {
-      valid: false,
-      message: "role must be ADMIN or AGENT",
-      field: "role",
     };
   }
 

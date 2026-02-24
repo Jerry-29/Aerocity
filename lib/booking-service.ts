@@ -17,6 +17,7 @@ export interface CreateBookingInput {
   customerEmail?: string;
   agentId?: number;
   bookedByRole?: "CUSTOMER" | "AGENT";
+  paymentMethod?: "ONLINE" | "OFFLINE";
 }
 
 /**
@@ -147,18 +148,21 @@ export async function createBooking(input: CreateBookingInput) {
   // Generate booking reference
   const bookingReference = "BK_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-  // Create Razorpay order
-  let razorpayOrderId: string;
-  try {
-    const receiptId = generateReceiptId();
-    const order = await createRazorpayOrder(
-      parseFloat(totalAmount.toString()),
-      receiptId,
-    );
-    razorpayOrderId = order.id;
-  } catch (error) {
-    console.error("Failed to create Razorpay order:", error);
-    throw new ValidationError("Failed to initiate payment. Please try again.", "payment");
+  const paymentMethod = input.paymentMethod || (isAgent ? "OFFLINE" : "ONLINE");
+
+  let razorpayOrderId: string | undefined;
+  if (paymentMethod === "ONLINE") {
+    try {
+      const receiptId = generateReceiptId();
+      const order = await createRazorpayOrder(
+        parseFloat(totalAmount.toString()),
+        receiptId,
+      );
+      razorpayOrderId = order.id;
+    } catch (error) {
+      console.error("Failed to create Razorpay order:", error);
+      throw new ValidationError("Failed to initiate payment. Please try again.", "payment");
+    }
   }
 
   // Get the offer to use (if multiple, use the first one with lowest price)
@@ -192,7 +196,7 @@ export async function createBooking(input: CreateBookingInput) {
       totalAmount,
       offerId: selectedOfferId,
       paymentStatus: "PENDING",
-      razorpayOrderId,
+      razorpayOrderId: razorpayOrderId ?? null,
       bookingItems: {
         create: bookingItemsData,
       },
@@ -210,6 +214,9 @@ export async function createBooking(input: CreateBookingInput) {
     id: booking.id,
     bookingReference: booking.bookingReference,
     visitDate: booking.visitDate,
+    customerName: booking.customerName,
+    customerMobile: booking.customerMobile,
+    customerEmail: booking.customerEmail,
     items: booking.bookingItems.map((item: any) => ({
       ticketId: item.ticketId,
       ticketName: item.ticket.name,

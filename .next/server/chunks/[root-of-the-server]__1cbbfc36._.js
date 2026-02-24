@@ -360,15 +360,17 @@ async function createBooking(input) {
     }
     // Generate booking reference
     const bookingReference = "BK_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-    // Create Razorpay order
+    const paymentMethod = input.paymentMethod || (isAgent ? "OFFLINE" : "ONLINE");
     let razorpayOrderId;
-    try {
-        const receiptId = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$razorpay$2d$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["generateReceiptId"])();
-        const order = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$razorpay$2d$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["createRazorpayOrder"])(parseFloat(totalAmount.toString()), receiptId);
-        razorpayOrderId = order.id;
-    } catch (error) {
-        console.error("Failed to create Razorpay order:", error);
-        throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"]("Failed to initiate payment. Please try again.", "payment");
+    if (paymentMethod === "ONLINE") {
+        try {
+            const receiptId = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$razorpay$2d$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["generateReceiptId"])();
+            const order = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$razorpay$2d$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["createRazorpayOrder"])(parseFloat(totalAmount.toString()), receiptId);
+            razorpayOrderId = order.id;
+        } catch (error) {
+            console.error("Failed to create Razorpay order:", error);
+            throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"]("Failed to initiate payment. Please try again.", "payment");
+        }
     }
     // Get the offer to use (if multiple, use the first one with lowest price)
     let selectedOfferId = null;
@@ -395,7 +397,7 @@ async function createBooking(input) {
             totalAmount,
             offerId: selectedOfferId,
             paymentStatus: "PENDING",
-            razorpayOrderId,
+            razorpayOrderId: razorpayOrderId ?? null,
             bookingItems: {
                 create: bookingItemsData
             }
@@ -840,7 +842,26 @@ function validateUserCreationRequest(data) {
             field: "phone"
         };
     }
-    if (!data.email || !validateEmail(data.email)) {
+    const role = typeof data.role === "string" ? data.role.toUpperCase() : "AGENT";
+    if (data.role && ![
+        "ADMIN",
+        "AGENT"
+    ].includes(role)) {
+        return {
+            valid: false,
+            message: "role must be ADMIN or AGENT",
+            field: "role"
+        };
+    }
+    if (role === "ADMIN") {
+        if (!data.email || !validateEmail(data.email)) {
+            return {
+                valid: false,
+                message: "Valid email is required",
+                field: "email"
+            };
+        }
+    } else if (data.email && !validateEmail(data.email)) {
         return {
             valid: false,
             message: "Valid email is required",
@@ -859,16 +880,6 @@ function validateUserCreationRequest(data) {
             valid: false,
             message: "password must be at least 6 characters",
             field: "password"
-        };
-    }
-    if (data.role && ![
-        "ADMIN",
-        "AGENT"
-    ].includes(data.role)) {
-        return {
-            valid: false,
-            message: "role must be ADMIN or AGENT",
-            field: "role"
         };
     }
     return {
