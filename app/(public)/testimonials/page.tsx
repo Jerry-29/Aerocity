@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { fetchTestimonials } from "@/lib/data";
-import { TestimonialsList } from "@/components/testimonials/testimonials-list";
+import { TestimonialsListLoader } from "@/components/testimonials/testimonials-loader";
 
 export const metadata: Metadata = {
   title: "Testimonials & Reviews",
@@ -10,8 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default async function TestimonialsPage() {
-  const testimonials = await fetchTestimonials();
-
   return (
     <>
       {/* Hero Banner */}
@@ -39,7 +36,7 @@ export default async function TestimonialsPage() {
         </div>
       </section>
 
-      <TestimonialsList testimonials={testimonials} />
+      <TestimonialsListLoader />
     </>
   );
 }

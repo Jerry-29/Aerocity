@@ -24,7 +24,7 @@ export interface CreateBookingInput {
  * Get active offers for a specific date
  */
 async function getActiveOffersForDate(date: Date) {
-  return prisma.offer.findMany({
+  const offers = await prisma.offer.findMany({
     where: {
       isActive: true,
       startDate: { lte: date },
@@ -34,6 +34,21 @@ async function getActiveOffersForDate(date: Date) {
       offerPrices: true,
     },
   });
+  // Synthesize percentage offers into per-ticket offerPrices when needed
+  const tickets = await prisma.ticket.findMany({
+    where: { isActive: true },
+    select: { id: true, customerPrice: true },
+  });
+  return offers.map((o: any) => {
+    const match = (o.description || "").match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+    if (!match) return o;
+    const pct = parseFloat(match[1]);
+    const computed = tickets.map((t: any) => ({
+      ticketId: t.id,
+      offerPrice: Math.max(0, Number(t.customerPrice) * (1 - pct / 100)),
+    }));
+    return { ...o, offerPrices: computed };
+  });
 }
 
 /**
@@ -41,8 +56,8 @@ async function getActiveOffersForDate(date: Date) {
  */
 function getBestPrice(
   ticketId: number,
-  customerPrice: Decimal,
-  agentPrice: Decimal,
+  customerPrice: Decimal.Value,
+  agentPrice: Decimal.Value,
   offers: Array<any>,
   isAgent: boolean,
 ): {
@@ -50,7 +65,7 @@ function getBestPrice(
   isOfferApplied: boolean;
   offerId?: number;
 } {
-  let bestPrice = isAgent ? agentPrice : customerPrice;
+  let bestPrice = new Decimal(isAgent ? agentPrice : customerPrice);
   let isOfferApplied = false;
   let offerId: number | undefined;
 
@@ -58,8 +73,9 @@ function getBestPrice(
   for (const offer of offers) {
     for (const offerPrice of offer.offerPrices) {
       if (offerPrice.ticketId === ticketId) {
-        if (offerPrice.offerPrice < bestPrice) {
-          bestPrice = offerPrice.offerPrice;
+        const candidate = new Decimal(offerPrice.offerPrice);
+        if (candidate.lessThan(bestPrice)) {
+          bestPrice = candidate;
           isOfferApplied = true;
           offerId = offer.id;
         }

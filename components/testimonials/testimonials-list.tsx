@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star, Send } from "lucide-react";
 import type { Testimonial } from "@/lib/types";
+import { apiPost } from "@/lib/api-client";
 
 interface TestimonialsListProps {
   testimonials: Testimonial[];
@@ -13,19 +14,40 @@ export function TestimonialsList({ testimonials }: TestimonialsListProps) {
   const [formRating, setFormRating] = useState(5);
   const [formContent, setFormContent] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock submission
-    setSubmitted(true);
-    setFormName("");
-    setFormRating(5);
-    setFormContent("");
+    setError("");
+    setSubmitting(true);
+    try {
+      const visitDate = new Date().toISOString().split("T")[0];
+      const res = await apiPost("/api/testimonials", {
+        name: formName.trim(),
+        rating: formRating,
+        content: formContent.trim(),
+        visitDate,
+      });
+      if (!(res as any)?.success) {
+        throw new Error((res as any)?.message || "Failed to submit testimonial");
+      }
+      setSubmitted(true);
+      setFormName("");
+      setFormRating(5);
+      setFormContent("");
+    } catch (err: any) {
+      setError(err?.message || "Failed to submit testimonial");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Calculate average rating
   const avgRating =
-    testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length;
+    testimonials.length > 0
+      ? testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length
+      : 0;
 
   return (
     <section className="py-16 lg:py-24">
@@ -114,6 +136,11 @@ export function TestimonialsList({ testimonials }: TestimonialsListProps) {
             <p className="mb-6 text-sm text-muted-foreground">
               Visited Aerocity? We would love to hear about your experience!
             </p>
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
 
             {submitted ? (
               <div className="flex flex-col items-center gap-3 rounded-lg bg-secondary/10 py-8 text-center">
@@ -198,10 +225,11 @@ export function TestimonialsList({ testimonials }: TestimonialsListProps) {
 
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110"
                 >
                   <Send className="h-4 w-4" />
-                  Submit Review
+                  {submitting ? "Submitting..." : "Submit Review"}
                 </button>
               </form>
             )}

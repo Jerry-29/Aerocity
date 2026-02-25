@@ -55,110 +55,122 @@ export function buildTicketHtml(input: BuildTicketHtmlInput): string {
       <meta charset="UTF-8">
       <title>Aerocity Booking - ${escapeHtml(input.bookingReference)}</title>
       <style>
+        @page { size: A4; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          padding: 20px;
-          background: #f5f5f5;
+          padding: 0;
+          background: #fff;
+        }
+        .scale {
+          transform: scale(0.94);
+          transform-origin: top center;
+          width: 100%;
+          display: flex;
+          justify-content: center;
         }
         .ticket {
-          max-width: 700px;
-          margin: 20px auto;
-          border: 3px solid #0284c7;
-          border-radius: 12px;
-          padding: 40px;
+          width: 190mm;
+          min-height: 265mm;
+          margin: 6mm auto;
+          border: 2px solid #0284c7;
+          border-radius: 10px;
+          padding: 18px 18px 12px 18px;
           background: white;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { font-size: 32px; color: #333; margin-bottom: 5px; font-weight: bold; }
-        .header p { color: #666; font-size: 14px; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h1 { font-size: 22px; color: #333; margin-bottom: 2px; font-weight: bold; }
+        .header p { color: #666; font-size: 11px; }
         .reference {
           background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
           border-radius: 8px;
-          padding: 25px;
+          padding: 12px;
           text-align: center;
-          margin: 25px 0;
+          margin: 10px 0;
           color: white;
         }
-        .reference-label { font-size: 11px; font-weight: bold; opacity: 0.9; }
+        .reference-label { font-size: 10px; font-weight: bold; opacity: 0.9; }
         .reference-code {
-          font-size: 30px;
+          font-size: 18px;
           font-weight: bold;
           font-family: 'Courier New', monospace;
-          letter-spacing: 3px;
-          margin-top: 10px;
+          letter-spacing: 2px;
+          margin-top: 6px;
         }
-        .qr-section { text-align: center; margin: 35px 0; }
-        .qr-section img { max-width: 200px; height: auto; border: 2px solid #ddd; border-radius: 8px; }
-        .qr-section p { margin-top: 12px; font-size: 12px; color: #666; }
+        .qr-section { text-align: center; margin: 12px 0; }
+        .qr-section img { width: 140px; height: 140px; border: 1px solid #ddd; border-radius: 6px; }
+        .qr-section p { margin-top: 6px; font-size: 10px; color: #666; }
         .details {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 25px;
-          margin: 30px 0;
-          padding: 20px 0;
+          gap: 10px;
+          margin: 10px 0;
+          padding: 10px 0;
           border-top: 1px solid #eee;
           border-bottom: 1px solid #eee;
         }
         .detail-label {
-          font-size: 11px;
+          font-size: 10px;
           color: #666;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .detail-value {
-          font-size: 16px;
+          font-size: 13px;
           color: #333;
-          margin-top: 6px;
+          margin-top: 4px;
           font-weight: 500;
         }
-        .tickets-section { margin: 30px 0; }
+        .tickets-section { margin: 12px 0; }
         .tickets-section h3 {
-          font-size: 16px;
+          font-size: 13px;
           font-weight: bold;
-          margin-bottom: 15px;
+          margin-bottom: 8px;
           color: #333;
         }
         .ticket-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px 0;
-          font-size: 14px;
+          padding: 6px 0;
+          font-size: 12px;
           border-bottom: 1px solid #f0f0f0;
         }
         .ticket-left { flex: 1; }
         .ticket-name { color: #333; font-weight: 500; }
-        .ticket-qty { color: #999; font-size: 13px; }
-        .ticket-price { color: #666; font-weight: 500; min-width: 80px; text-align: right; }
+        .ticket-qty { color: #999; font-size: 11px; }
+        .ticket-price { color: #666; font-weight: 500; min-width: 70px; text-align: right; }
         .total {
           display: flex;
           justify-content: space-between;
           align-items: center;
           border-top: 2px solid #333;
-          padding-top: 15px;
-          margin-top: 15px;
+          padding-top: 8px;
+          margin-top: 8px;
           font-weight: bold;
-          font-size: 20px;
+          font-size: 16px;
           color: #0284c7;
         }
         .footer {
           text-align: center;
-          margin-top: 40px;
-          font-size: 11px;
+          margin-top: 14px;
+          font-size: 10px;
           color: #999;
-          padding-top: 20px;
+          padding-top: 10px;
           border-top: 1px solid #eee;
         }
-        .print-button { text-align: center; margin-top: 30px; }
+        .print-button { text-align: center; margin-top: 12px; }
         .print-button button {
           background: #0284c7;
           color: white;
           border: none;
-          padding: 12px 30px;
-          font-size: 16px;
+          padding: 10px 24px;
+          font-size: 14px;
           border-radius: 6px;
           cursor: pointer;
           font-weight: 600;
@@ -166,12 +178,13 @@ export function buildTicketHtml(input: BuildTicketHtmlInput): string {
         .print-button button:hover { background: #0369a1; }
         @media print {
           body { padding: 0; margin: 0; background: white; }
-          .ticket { margin: 0; box-shadow: none; page-break-inside: avoid; }
+          .ticket { margin: 0; page-break-inside: avoid; }
           .print-button { display: none; }
         }
       </style>
     </head>
     <body>
+      <div class="scale">
       <div class="ticket">
         <div class="header">
           <h1>AEROCITY</h1>
@@ -221,6 +234,7 @@ export function buildTicketHtml(input: BuildTicketHtmlInput): string {
           <p>Contact: support@aerocity.com | +91-XXXX-XXXX</p>
           <p>Generated: ${new Date().toLocaleString("en-IN")}</p>
         </div>
+      </div>
       </div>
 
       ${

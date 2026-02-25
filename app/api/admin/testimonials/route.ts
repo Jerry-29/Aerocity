@@ -17,15 +17,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
-    const isApproved = searchParams.get("isApproved");
-    const isFeatured = searchParams.get("isFeatured");
+    const isApprovedParam = searchParams.get("isApproved");
+    const isFeaturedParam = searchParams.get("isFeatured");
 
     const where: any = {};
-    if (isApproved !== undefined) {
-      where.isApproved = isApproved === "true";
+    if (isApprovedParam !== null) {
+      where.isApproved = isApprovedParam === "true";
     }
-    if (isFeatured !== undefined) {
-      where.isFeatured = isFeatured === "true";
+    if (isFeaturedParam !== null) {
+      where.isFeatured = isFeaturedParam === "true";
     }
 
     const total = await prisma.testimonial.count({ where });
@@ -38,7 +38,13 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      createPaginatedResponse(testimonials, page, pageSize, total),
+      createPaginatedResponse(
+        "Testimonials retrieved",
+        testimonials,
+        page,
+        pageSize,
+        total,
+      ),
       { status: 200 },
     );
   } catch (error: any) {

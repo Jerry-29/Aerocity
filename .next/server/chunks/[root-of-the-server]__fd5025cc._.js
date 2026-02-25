@@ -839,6 +839,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app
 ;
 ;
 ;
+function embedPercent(desc, percentage) {
+    const base = desc?.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "")?.trim() || "";
+    if (percentage === undefined || isNaN(percentage)) return base;
+    return `${base} [PERCENT:${percentage}]`.trim();
+}
 async function GET(request) {
     try {
         const { auth, error } = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$auth$2d$middleware$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["withAuth"])(request);
@@ -903,22 +908,48 @@ async function POST(request) {
             throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ForbiddenError"]("Only admins can create offers");
         }
         const body = await request.json();
-        (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$validators$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["validateOfferRequest"])(body);
-        const { name, description, startDate, endDate, isActive, offerPrices } = body;
-        // Create offer with offer prices
+        const validation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$validators$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["validateOfferRequest"])(body);
+        if (!validation.valid) {
+            throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"](validation.message || "Invalid request", validation.field);
+        }
+        const { name, description, startDate, endDate, isActive, offerPrices, percentageEnabled, percentage } = body;
+        const willBeActive = isActive === undefined ? true : !!isActive;
+        // Enforce maximum number of offers
+        const totalOffers = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].offer.count();
+        if (totalOffers >= 5) {
+            throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ConflictError"]("Maximum of 5 offers allowed. Delete or deactivate an existing offer before adding a new one.");
+        }
+        if (willBeActive) {
+            const existingActive = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].offer.findFirst({
+                where: {
+                    isActive: true
+                },
+                select: {
+                    id: true,
+                    name: true
+                }
+            });
+            if (existingActive) {
+                throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ConflictError"](`Another offer is already active (${existingActive.name}). Deactivate it before activating a new one.`);
+            }
+        }
+        const isPercent = !!percentageEnabled && typeof percentage === "number";
+        // Create offer with offer prices or percentage flag in description
         const offer = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].offer.create({
             data: {
                 name,
-                description: description || null,
+                description: isPercent ? embedPercent(description, percentage) : description || null,
                 startDate: new Date(startDate),
                 endDate: new Date(endDate),
-                isActive: isActive !== undefined ? isActive : true,
+                isActive: willBeActive,
                 appliesToAllCustomers: true,
-                offerPrices: {
-                    create: offerPrices.map((price)=>({
-                            ticketId: price.ticketId,
-                            offerPrice: price.offerPrice
-                        }))
+                ...isPercent ? {} : {
+                    offerPrices: {
+                        create: (offerPrices || []).map((price)=>({
+                                ticketId: price.ticketId,
+                                offerPrice: price.offerPrice
+                            }))
+                    }
                 }
             },
             include: {
@@ -937,6 +968,11 @@ async function POST(request) {
         if (error instanceof __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ForbiddenError"]) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$responses$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["createErrorResponse"])("Forbidden", error.message), {
                 status: 403
+            });
+        }
+        if (error instanceof __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ConflictError"]) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json((0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$responses$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["createErrorResponse"])(error.message || "Only one offer can be active at a time", error.message, "CONFLICT"), {
+                status: 409
             });
         }
         if (error instanceof __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"]) {

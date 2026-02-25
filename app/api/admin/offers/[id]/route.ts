@@ -3,7 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
-import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ForbiddenError, NotFoundError, ValidationError, ConflictError } from "@/lib/errors";
+
+function embedPercent(desc: string | null | undefined, percentage?: number) {
+  const base = desc?.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "")?.trim() || "";
+  if (percentage === undefined || isNaN(percentage)) return base;
+  return `${base} [PERCENT:${percentage}]`.trim();
+}
 
 export async function GET(
   request: NextRequest,
@@ -90,11 +96,44 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Delete old offer prices if new ones provided
-    if (body.offerPrices && Array.isArray(body.offerPrices)) {
+    if (body.isActive === true) {
+      const existingActive = await prisma.offer.findFirst({
+        where: {
+          isActive: true,
+          id: { not: offerId },
+        },
+        select: { id: true, name: true },
+      });
+      if (existingActive) {
+        throw new ConflictError(
+          `Another offer is already active (${existingActive.name}). Deactivate it before activating this one.`,
+        );
+      }
+    }
+
+    // Handle percentage vs per-ticket mode
+    const isPercent = !!body.percentageEnabled && typeof body.percentage === "number";
+    if (isPercent) {
       await prisma.offerTicketPrice.deleteMany({
         where: { offerId: offerId },
       });
+      const newDesc = embedPercent(body.description ?? offer.description, body.percentage);
+      await prisma.offer.update({
+        where: { id: offerId },
+        data: { description: newDesc },
+      });
+    } else {
+      // When switching back to per-ticket, strip marker and allow prices to be recreated
+      const cleanDesc = embedPercent(body.description ?? offer.description, undefined);
+      await prisma.offer.update({
+        where: { id: offerId },
+        data: { description: cleanDesc },
+      });
+      if (body.offerPrices && Array.isArray(body.offerPrices)) {
+        await prisma.offerTicketPrice.deleteMany({
+          where: { offerId: offerId },
+        });
+      }
     }
 
     const updated = await prisma.offer.update({
@@ -105,7 +144,8 @@ export async function PUT(
         ...(body.startDate && { startDate: new Date(body.startDate) }),
         ...(body.endDate && { endDate: new Date(body.endDate) }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
-        ...(body.offerPrices &&
+        ...(!isPercent &&
+          body.offerPrices &&
           Array.isArray(body.offerPrices) && {
             offerPrices: {
               create: body.offerPrices.map((price: any) => ({
@@ -140,6 +180,17 @@ export async function PUT(
       return NextResponse.json(
         createErrorResponse("Forbidden", error.message),
         { status: 403 },
+      );
+    }
+
+    if (error instanceof ConflictError) {
+      return NextResponse.json(
+        createErrorResponse(
+          error.message || "Only one offer can be active at a time",
+          error.message,
+          "CONFLICT",
+        ),
+        { status: 409 },
       );
     }
 

@@ -78,20 +78,28 @@ export default async function PricingPage() {
       </section>
 
       {/* Offer Banner */}
-      {offer && offer.isActive && (
-        <section className="bg-accent/10 py-4">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center sm:flex-row sm:justify-center sm:gap-4 lg:px-8">
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-accent" />
-            </span>
-            <p className="text-sm font-medium text-foreground">
-              <span className="font-bold">{offer.name}</span> is live!{" "}
-              {offer.description}
-            </p>
-          </div>
-        </section>
-      )}
+      {offer && offer.isActive && (() => {
+        const raw = offer.description || "";
+        const match = raw.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+        const pct = match ? parseFloat(match[1]) : null;
+        const cleaned = raw.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "").trim();
+        const message = pct !== null
+          ? `${pct}% discount on all tickets. Special prices already applied below.`
+          : cleaned || "Special prices are live now.";
+        return (
+          <section className="bg-accent/10 py-4">
+            <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center sm:flex-row sm:justify-center sm:gap-4 lg:px-8">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-accent" />
+              </span>
+              <p className="text-sm font-medium text-foreground">
+                <span className="font-bold">{offer.name}</span> is live! {message}
+              </p>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Pricing Cards */}
       <section className="py-16 lg:py-24">

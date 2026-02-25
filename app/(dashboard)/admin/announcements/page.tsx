@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Megaphone,
   Plus,
@@ -12,7 +12,7 @@ import {
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
-import { mockAnnouncements } from "@/lib/admin-data";
+import { apiGet, apiPost, apiPut, apiDelete, isSuccessResponse } from "@/lib/api-client";
 import type { AdminAnnouncement } from "@/lib/admin-types";
 
 const columns: Column<AdminAnnouncement>[] = [
@@ -52,7 +52,7 @@ const emptyForm = {
 };
 
 export default function AdminAnnouncementsPage() {
-  const [announcements, setAnnouncements] = useState(mockAnnouncements);
+  const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -61,6 +61,53 @@ export default function AdminAnnouncementsPage() {
   const [deleteTarget, setDeleteTarget] = useState<AdminAnnouncement | null>(
     null
   );
+
+  const parseMeta = (content: string) => {
+    const pr = content.match(/\[PRIORITY:(\d+)\]/i);
+    const val = content.match(/\[VALID:([0-9-]+),([0-9-]+)\]/i);
+    const aud = content.match(/\[AUDIENCE:(PUBLIC|AGENT|ADMIN)\]/i);
+    return {
+      priority: pr ? parseInt(pr[1], 10) : 0,
+      validFrom: val ? val[1] : "",
+      validTo: val ? val[2] : "",
+      audience: aud ? (aud[1] as string) : "PUBLIC",
+      clean: content.replace(/\s*\[(PRIORITY|VALID|AUDIENCE):[^\]]+\]\s*/gi, "").trim(),
+    };
+  };
+
+  const fetchAll = async () => {
+    try {
+      setError("");
+      const res = await apiGet<any>("/api/admin/announcements?page=1&limit=100");
+      if (!isSuccessResponse(res)) {
+        throw new Error(res.message || "Failed to load announcements");
+      }
+      const payload: any = res.data;
+      const items: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      const mapped: AdminAnnouncement[] = items.map((a: any) => {
+        const meta = parseMeta(a.content || "");
+        return {
+          id: a.id,
+          title: a.title,
+          content: meta.clean,
+          type: (a.type || "INFO").toUpperCase(),
+          validFrom: meta.validFrom || new Date(a.createdAt).toISOString().split("T")[0],
+          validTo: meta.validTo || new Date(a.createdAt).toISOString().split("T")[0],
+          isActive: !!a.isActive,
+          displayOrder: meta.priority || 0,
+          createdAt: a.createdAt,
+        };
+      });
+      setAnnouncements(mapped);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load announcements");
+      setAnnouncements([]);
+    }
+  };
+
+  useEffect(() => {
+    void fetchAll();
+  }, []);
 
   const openCreate = () => {
     setEditingId(null);
@@ -98,51 +145,49 @@ export default function AdminAnnouncementsPage() {
       return;
     }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-
-    if (editingId) {
-      setAnnouncements((prev) =>
-        prev.map((a) =>
-          a.id === editingId
-            ? {
-                ...a,
-                title: form.title,
-                content: form.content,
-                type: form.type,
-                validFrom: form.validFrom,
-                validTo: form.validTo,
-                displayOrder: form.displayOrder,
-              }
-            : a
-        )
-      );
-    } else {
-      const newAnn: AdminAnnouncement = {
-        id: Date.now(),
+    try {
+      const payload: any = {
         title: form.title,
         content: form.content,
         type: form.type,
+        isActive: true,
+        priority: form.displayOrder,
         validFrom: form.validFrom,
         validTo: form.validTo,
-        isActive: true,
-        displayOrder: form.displayOrder,
-        createdAt: new Date().toISOString(),
+        audience: "PUBLIC",
       };
-      setAnnouncements((prev) => [newAnn, ...prev]);
+      const res = editingId
+        ? await apiPut(`/api/admin/announcements/${editingId}`, payload)
+        : await apiPost(`/api/admin/announcements`, payload);
+      if (!isSuccessResponse(res)) {
+        throw new Error((res as any).message || "Failed to save announcement");
+      }
+      await fetchAll();
+      setShowForm(false);
+    } catch (e: any) {
+      setError(e?.message || "Failed to save announcement");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowForm(false);
   };
 
-  const toggleActive = (id: number) => {
-    setAnnouncements((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, isActive: !a.isActive } : a))
-    );
+  const toggleActive = async (id: number) => {
+    const row = announcements.find((a) => a.id === id);
+    if (!row) return;
+    const res = await apiPut(`/api/admin/announcements/${id}`, {
+      isActive: !row.isActive,
+    });
+    if (isSuccessResponse(res)) {
+      await fetchAll();
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    setAnnouncements((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+    const res = await apiDelete(`/api/admin/announcements/${deleteTarget.id}`);
+    if (isSuccessResponse(res)) {
+      await fetchAll();
+    }
     setDeleteTarget(null);
   };
 

@@ -188,6 +188,26 @@ export function StepPayment() {
       // Show success
       toast.success("Payment successful! Your booking is confirmed.");
 
+      // Auto-download ticket PDF, then navigate to confirmation
+      try {
+        const pdfRes = await fetch(`/api/bookings/${bookingRef}/ticket`, {
+          credentials: "include",
+        });
+        if (pdfRes.ok) {
+          const blob = await pdfRes.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${bookingRef}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        }
+      } catch {
+        // Silent fail; user can still download from confirmation page
+      }
+
       // Redirect to confirmation page
       router.push(`/booking/confirmation?ref=${bookingRef}`);
     } catch (error: any) {

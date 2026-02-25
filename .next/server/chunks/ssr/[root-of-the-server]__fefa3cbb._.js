@@ -1188,17 +1188,87 @@ async function fetchTicketCategories() {
             };
         });
     } catch (error) {
-        console.error("fetchTicketCategories fallback to mock data:", error);
-        return ticketCategories;
+        console.error("fetchTicketCategories error:", error);
+        // Avoid serving stale/static data; return empty to reflect current state
+        return [];
     }
 }
 async function fetchActiveOffer() {
-    return activeOffer;
+    try {
+        const now = new Date();
+        const current = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].offer.findFirst({
+            where: {
+                isActive: true,
+                startDate: {
+                    lte: now
+                },
+                endDate: {
+                    gte: now
+                }
+            },
+            orderBy: {
+                createdAt: "desc"
+            }
+        });
+        if (!current) return null;
+        return {
+            id: current.id,
+            name: current.name,
+            description: current.description || "",
+            startDate: current.startDate.toISOString().split("T")[0],
+            endDate: current.endDate.toISOString().split("T")[0],
+            isActive: current.isActive,
+            discountPercentage: 0
+        };
+    } catch (err) {
+        // Avoid showing a fake/legacy offer on failure
+        return null;
+    }
 }
 async function fetchAnnouncements() {
+    try {
+        const base = process.env.NEXT_PUBLIC_APP_URL || "";
+        const res = await fetch(`${base}/api/announcements`, {
+            cache: "no-store"
+        });
+        if (res.ok) {
+            const json = await res.json();
+            const list = Array.isArray(json?.data) ? json.data : [];
+            return list.map((a)=>({
+                    id: a.id,
+                    title: a.title,
+                    message: a.content || "",
+                    type: a.type || "info",
+                    isActive: !!a.isActive,
+                    createdAt: a.createdAt
+                }));
+        }
+    } catch  {
+    // ignore and fallback
+    }
     return announcements.filter((a)=>a.isActive);
 }
 async function fetchTestimonials() {
+    try {
+        const base = process.env.NEXT_PUBLIC_APP_URL || "";
+        const res = await fetch(`${base}/api/testimonials`, {
+            cache: "no-store"
+        });
+        if (res.ok) {
+            const json = await res.json();
+            const data = Array.isArray(json?.data) ? json.data : [];
+            return data.map((t)=>({
+                    id: t.id,
+                    name: t.name,
+                    rating: Number(t.rating) || 0,
+                    content: t.content || "",
+                    visitDate: typeof t.visitDate === "string" ? t.visitDate.split("T")[0] : new Date(t.visitDate).toISOString().split("T")[0],
+                    isApproved: true
+                }));
+        }
+    } catch  {
+    // ignore and fallback
+    }
     return testimonials.filter((t)=>t.isApproved);
 }
 async function fetchAttractions() {

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn, formatPrice, validateEmail, validateMobile } from "@/lib/utils";
 import { apiGet, apiPost, isSuccessResponse } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 
 type RazorpayResponse = {
   razorpay_payment_id: string;
@@ -57,6 +58,7 @@ const STEPS = [
 
 export default function AdminBookPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [visitDate, setVisitDate] = useState("");
   const [tickets, setTickets] = useState<Record<number, number>>({});
@@ -81,8 +83,8 @@ export default function AdminBookPage() {
         categoryId: t.id,
         categoryName: t.name,
         quantity: tickets[t.id],
-        unitPrice: t.customerPrice,
-        totalPrice: t.customerPrice * tickets[t.id],
+        unitPrice: t.agentPrice,
+        totalPrice: t.agentPrice * tickets[t.id],
       }));
   }, [availableTickets, tickets]);
 
@@ -193,6 +195,10 @@ export default function AdminBookPage() {
     setProcessing(true);
     setError("");
     try {
+      if (!user?.id) {
+        setError("Admin session is missing. Please log in again.");
+        return;
+      }
       const items = selections.map((item) => ({
         ticketId: item.categoryId,
         quantity: item.quantity,
@@ -208,7 +214,8 @@ export default function AdminBookPage() {
         customerName: name.trim(),
         customerMobile: mobile.trim(),
         customerEmail: email.trim() || undefined,
-        bookedByRole: "CUSTOMER",
+        bookedByRole: "AGENT",
+        agentId: user.id,
         paymentMethod,
       });
 
@@ -434,7 +441,7 @@ export default function AdminBookPage() {
 
               <div className="flex flex-col gap-3">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Select Tickets
+                  Select Tickets (Admin Pricing)
                 </h3>
                 {ticketsLoading && (
                   <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
@@ -464,7 +471,10 @@ export default function AdminBookPage() {
                             {t.description}
                           </p>
                           <p className="mt-0.5 text-sm font-bold text-secondary">
-                            {formatPrice(t.customerPrice)}
+                            {formatPrice(t.agentPrice)}{" "}
+                            <span className="text-xs font-normal text-muted-foreground line-through">
+                              {formatPrice(t.customerPrice)}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -595,17 +605,16 @@ export default function AdminBookPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod("OFFLINE")}
+                    onClick={() => {}}
+                    disabled
                     className={cn(
-                      "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-colors",
-                      paymentMethod === "OFFLINE"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50",
+                      "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-colors opacity-50 cursor-not-allowed",
+                      "border-border",
                     )}
                   >
                     <Banknote className="h-6 w-6 text-green-600" />
                     <span className="text-sm font-medium text-foreground">
-                      Offline Payment
+                      Offline Payment (Disabled)
                     </span>
                     <span className="text-xs text-muted-foreground">
                       Cash / UPI

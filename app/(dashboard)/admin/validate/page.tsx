@@ -13,8 +13,8 @@ import {
   Keyboard,
 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
-import { mockBookings } from "@/lib/admin-data";
 import type { AdminBooking } from "@/lib/admin-types";
+import { apiGet, apiPut, isSuccessResponse } from "@/lib/api-client";
 
 interface ValidationEntry {
   reference: string;
@@ -41,63 +41,84 @@ export default function AdminValidatePage() {
 
     setLoading(true);
     setResult(null);
-    await new Promise((r) => setTimeout(r, 800));
-
-    const booking = mockBookings.find(
-      (b) =>
-        b.bookingReference.toLowerCase() === reference.trim().toLowerCase()
-    );
-
-    let validationResult: { success: boolean; message: string; booking?: AdminBooking };
-
-    if (!booking) {
-      validationResult = {
-        success: false,
-        message: "Booking not found. Please check the reference number.",
-      };
-    } else if (booking.paymentStatus !== "PAID") {
-      validationResult = {
-        success: false,
-        message: `Booking is not paid. Current status: ${booking.paymentStatus}`,
-        booking,
-      };
-    } else if (booking.isValidated) {
-      validationResult = {
-        success: false,
-        message: `Entry already validated on ${new Date(
-          booking.validatedAt!
-        ).toLocaleString("en-IN")}`,
-        booking,
-      };
-    } else {
-      const today = new Date().toISOString().split("T")[0];
-      if (booking.visitDate !== today) {
-        validationResult = {
-          success: false,
-          message: `Ticket is for ${new Date(
-            booking.visitDate
-          ).toLocaleDateString("en-IN")}, not today.`,
-          booking,
-        };
+    try {
+      const ref = reference.trim();
+      const res = await apiGet<any>(`/api/admin/bookings/${ref}`);
+      if (!isSuccessResponse(res)) {
+        const msg = res.message || "Booking not found. Please check the reference number.";
+        setResult({ success: false, message: msg });
       } else {
-        validationResult = {
-          success: true,
-          message: "Entry validated successfully! Welcome to Aerocity.",
-          booking,
-        };
+        const booking = res.data;
+        let validationResult:
+          | { success: boolean; message: string; booking?: AdminBooking }
+          | null = null;
+
+        if (!booking) {
+          validationResult = {
+            success: false,
+            message: "Booking not found. Please check the reference number.",
+          };
+        } else if (booking.paymentStatus !== "PAID") {
+          validationResult = {
+            success: false,
+            message: `Booking is not paid. Current status: ${booking.paymentStatus}`,
+            booking,
+          };
+        } else if (booking.isValidated) {
+          validationResult = {
+            success: false,
+            message: `Entry already validated on ${new Date(
+              booking.validatedAt!,
+            ).toLocaleString("en-IN")}`,
+            booking,
+          };
+        } else {
+          const today = new Date().toISOString().split("T")[0];
+          const bookingDate = new Date(booking.visitDate).toISOString().split("T")[0];
+          if (bookingDate !== today) {
+            validationResult = {
+              success: false,
+              message: `Ticket is for ${new Date(booking.visitDate).toLocaleDateString("en-IN")}, not today.`,
+              booking,
+            };
+          } else {
+            const validateRes = await apiPut(`/api/admin/bookings/${ref}/validate`);
+            if (!isSuccessResponse(validateRes)) {
+              validationResult = {
+                success: false,
+                message: validateRes.message || "Failed to validate booking",
+                booking,
+              };
+            } else {
+              // Refetch updated booking
+              const updated = await apiGet<any>(`/api/admin/bookings/${ref}`);
+              validationResult = {
+                success: true,
+                message: "Entry validated successfully! Welcome to Aerocity.",
+                booking: isSuccessResponse(updated) ? updated.data : booking,
+              };
+            }
+          }
+        }
+
+        setResult(validationResult);
+        setRecentValidations((prev) => [
+          {
+            reference: ref,
+            success: validationResult?.success ?? false,
+            message: validationResult?.message ?? "",
+            timestamp: new Date().toLocaleTimeString("en-IN"),
+          },
+          ...prev,
+        ]);
       }
+    } catch (err: any) {
+      setResult({
+        success: false,
+        message: err?.message || "Unexpected error during validation",
+      });
     }
 
-    setResult(validationResult);
-    setRecentValidations((prev) => [
-      {
-        reference: reference.trim(),
-        success: validationResult.success,
-        message: validationResult.message,
-        timestamp: new Date().toLocaleTimeString("en-IN"),
-      },
-      ...prev,
-    ]);
     setLoading(false);
   };
 
@@ -229,7 +250,12 @@ export default function AdminValidatePage() {
                       </span>
                     </div>
                     <div className="font-semibold text-primary">
-                      {formatPrice(result.booking.finalAmount)}
+                      {formatPrice(
+                        result.booking.items.reduce(
+                          (s, i) => s + Number(i.appliedPrice) * i.quantity,
+                          0
+                        )
+                      )}
                     </div>
                   </div>
                 </div>

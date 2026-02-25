@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const [announcements, total] = await Promise.all([
       prisma.announcement.findMany({
         where,
-        orderBy: { displayOrder: "asc" },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -80,15 +80,14 @@ export async function POST(request: NextRequest) {
       throw new ValidationError(validation.message, validation.field);
     }
 
-    const { title, message, type, isActive, displayOrder } = body;
+    const { title, content, message, type, isActive, priority, validFrom, validTo, audience } = body;
 
     const announcement = await prisma.announcement.create({
       data: {
         title,
-        message,
+        content: embedMeta(content || message || "", { priority, validFrom, validTo, audience }),
         type: type || "info",
         isActive: isActive !== false,
-        displayOrder: displayOrder || 1,
       },
     });
 
@@ -118,4 +117,12 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+ 
+function embedMeta(content: string, meta: any) {
+  let out = (content || "").replace(/\s*\[(PRIORITY|VALID|AUDIENCE):[^\]]+\]\s*/gi, "").trim();
+  if (meta?.priority !== undefined) out += ` [PRIORITY:${Number(meta.priority) || 0}]`;
+  if (meta?.validFrom && meta?.validTo) out += ` [VALID:${meta.validFrom},${meta.validTo}]`;
+  if (meta?.audience) out += ` [AUDIENCE:${String(meta.audience).toUpperCase()}]`;
+  return out.trim();
 }

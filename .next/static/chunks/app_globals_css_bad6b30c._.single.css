@@ -506,6 +506,10 @@ body {
   z-index: 110;
 }
 
+.z-\[200\] {
+  z-index: 200;
+}
+
 .mx-2 {
   margin-left: .5rem;
   margin-right: .5rem;
@@ -917,6 +921,10 @@ body {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
+.transform {
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
 @keyframes ping {
   75%, 100% {
     opacity: 0;
@@ -950,6 +958,10 @@ body {
 
 .animate-spin {
   animation: 1s linear infinite spin;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
 }
 
 .cursor-pointer {
@@ -1152,6 +1164,10 @@ body {
   border-color: hsl(var(--destructive));
 }
 
+.border-destructive\/30 {
+  border-color: hsl(var(--destructive) / .3);
+}
+
 .border-green-200 {
   --tw-border-opacity: 1;
   border-color: rgba(187, 247, 208, var(--tw-border-opacity, 1));
@@ -1193,10 +1209,6 @@ body {
 .border-yellow-200 {
   --tw-border-opacity: 1;
   border-color: rgba(254, 240, 138, var(--tw-border-opacity, 1));
-}
-
-.border-destructive\/30 {
-  border-color: hsl(var(--destructive) / .3);
 }
 
 .border-t-primary {
@@ -1305,6 +1317,10 @@ body {
 .bg-green-50 {
   --tw-bg-opacity: 1;
   background-color: rgba(240, 253, 244, var(--tw-bg-opacity, 1));
+}
+
+.bg-green-500\/10 {
+  background-color: rgba(34, 197, 94, .1);
 }
 
 .bg-green-600 {
@@ -1417,10 +1433,6 @@ body {
 .bg-yellow-50 {
   --tw-bg-opacity: 1;
   background-color: rgba(254, 252, 232, var(--tw-bg-opacity, 1));
-}
-
-.bg-green-500\/10 {
-  background-color: rgba(34, 197, 94, .1);
 }
 
 .bg-gradient-to-r {
@@ -2033,6 +2045,10 @@ body {
   opacity: .4;
 }
 
+.opacity-50 {
+  opacity: .5;
+}
+
 .opacity-75 {
   opacity: .75;
 }
@@ -2356,12 +2372,12 @@ html {
   opacity: .5;
 }
 
-.disabled\:opacity-70:disabled {
-  opacity: .7;
-}
-
 .disabled\:opacity-60:disabled {
   opacity: .6;
+}
+
+.disabled\:opacity-70:disabled {
+  opacity: .7;
 }
 
 .group[open] .group-open\:rotate-180 {

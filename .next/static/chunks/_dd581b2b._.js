@@ -414,21 +414,13 @@ function AnnouncementBanner(param) {
                 lineNumber: 20,
                 columnNumber: 7
             }, this),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "text-center text-xs font-medium sm:text-sm",
-                children: [
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                        className: "font-semibold",
-                        children: announcement.title
-                    }, void 0, false, {
-                        fileName: "[project]/components/layout/announcement-banner.tsx",
-                        lineNumber: 22,
-                        columnNumber: 9
-                    }, this),
-                    " ",
-                    announcement.message
-                ]
-            }, void 0, true, {
+                "aria-live": "polite",
+                dangerouslySetInnerHTML: {
+                    __html: '<span class="font-semibold">'.concat(announcement.title, "</span> ").concat(announcement.message)
+                }
+            }, void 0, false, {
                 fileName: "[project]/components/layout/announcement-banner.tsx",
                 lineNumber: 21,
                 columnNumber: 7
@@ -441,12 +433,12 @@ function AnnouncementBanner(param) {
                     className: "h-3.5 w-3.5"
                 }, void 0, false, {
                     fileName: "[project]/components/layout/announcement-banner.tsx",
-                    lineNumber: 31,
+                    lineNumber: 33,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/layout/announcement-banner.tsx",
-                lineNumber: 26,
+                lineNumber: 28,
                 columnNumber: 7
             }, this)
         ]

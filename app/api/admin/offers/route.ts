@@ -4,7 +4,13 @@ import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateOfferRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse, createPaginatedResponse } from "@/lib/responses";
-import { ValidationError, ForbiddenError } from "@/lib/errors";
+import { ValidationError, ForbiddenError, ConflictError } from "@/lib/errors";
+
+function embedPercent(desc: string | null | undefined, percentage?: number) {
+  const base = desc?.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "")?.trim() || "";
+  if (percentage === undefined || isNaN(percentage)) return base;
+  return `${base} [PERCENT:${percentage}]`.trim();
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -87,25 +93,54 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    validateOfferRequest(body);
+    const validation = validateOfferRequest(body);
+    if (!validation.valid) {
+      throw new ValidationError(validation.message || "Invalid request", validation.field);
+    }
 
-    const { name, description, startDate, endDate, isActive, offerPrices } = body;
+    const { name, description, startDate, endDate, isActive, offerPrices, percentageEnabled, percentage } = body;
 
-    // Create offer with offer prices
+    const willBeActive = isActive === undefined ? true : !!isActive;
+    // Enforce maximum number of offers
+    const totalOffers = await prisma.offer.count();
+    if (totalOffers >= 5) {
+      throw new ConflictError(
+        "Maximum of 5 offers allowed. Delete or deactivate an existing offer before adding a new one.",
+      );
+    }
+    if (willBeActive) {
+      const existingActive = await prisma.offer.findFirst({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      });
+      if (existingActive) {
+        throw new ConflictError(
+          `Another offer is already active (${existingActive.name}). Deactivate it before activating a new one.`,
+        );
+      }
+    }
+
+    const isPercent = !!percentageEnabled && typeof percentage === "number";
+
+    // Create offer with offer prices or percentage flag in description
     const offer = await prisma.offer.create({
       data: {
         name,
-        description: description || null,
+        description: isPercent ? embedPercent(description, percentage) : (description || null),
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        isActive: isActive !== undefined ? isActive : true,
+        isActive: willBeActive,
         appliesToAllCustomers: true,
-        offerPrices: {
-          create: offerPrices.map((price: any) => ({
-            ticketId: price.ticketId,
-            offerPrice: price.offerPrice,
-          })),
-        },
+        ...(isPercent
+          ? {}
+          : {
+              offerPrices: {
+                create: (offerPrices || []).map((price: any) => ({
+                  ticketId: price.ticketId,
+                  offerPrice: price.offerPrice,
+                })),
+              },
+            }),
       },
       include: {
         offerPrices: {
@@ -127,6 +162,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         createErrorResponse("Forbidden", error.message),
         { status: 403 },
+      );
+    }
+
+    if (error instanceof ConflictError) {
+      return NextResponse.json(
+        createErrorResponse(
+          error.message || "Only one offer can be active at a time",
+          error.message,
+          "CONFLICT",
+        ),
+        { status: 409 },
       );
     }
 

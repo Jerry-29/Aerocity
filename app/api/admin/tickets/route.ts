@@ -94,6 +94,12 @@ export async function POST(request: NextRequest) {
 
     const { name, slug, description, customerPrice, agentPrice, heightRequirement, isActive } = body;
 
+    // Enforce maximum of 5 ticket categories total
+    const totalTickets = await prisma.ticket.count();
+    if (totalTickets >= 5) {
+      throw new ConflictError("Maximum of 5 ticket categories allowed. Delete or deactivate an existing one before adding a new category.");
+    }
+
     // Check if ticket with same name or slug already exists
     const existing = await prisma.ticket.findFirst({
       where: {
@@ -144,7 +150,11 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof ConflictError) {
       return NextResponse.json(
-        createErrorResponse("Conflict", error.message, "CONFLICT"),
+        createErrorResponse(
+          error.message || "Unable to create ticket due to a conflict",
+          error.message,
+          "CONFLICT",
+        ),
         { status: 409 },
       );
     }

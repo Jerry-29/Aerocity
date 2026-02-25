@@ -29,7 +29,10 @@ const columns: Column<AdminBooking>[] = [
   {
     key: "bookedByRole",
     label: "Booked By",
-    render: (row) => <StatusBadge status={row.bookedByRole} />,
+    render: (row: any) => {
+      const displayRole = row?.agent?.role === "ADMIN" ? "ADMIN" : row.bookedByRole;
+      return <StatusBadge status={displayRole} />;
+    },
   },
   {
     key: "createdAt",

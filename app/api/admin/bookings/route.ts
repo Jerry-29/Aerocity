@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
           include: { ticket: true },
         },
         offer: true,
+        agent: {
+          select: { id: true, name: true, role: true },
+        },
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -120,6 +123,13 @@ export async function GET(request: NextRequest) {
       validatedAt: booking.validatedAt,
       offerApplied: booking.offer
         ? { id: booking.offer.id, name: booking.offer.name }
+        : null,
+      agent: booking.agent
+        ? {
+            id: booking.agent.id,
+            name: booking.agent.name,
+            role: booking.agent.role,
+          }
         : null,
       createdAt: booking.createdAt,
     }));

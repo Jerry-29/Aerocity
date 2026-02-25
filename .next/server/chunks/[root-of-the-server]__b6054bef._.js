@@ -264,7 +264,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$de
 /**
  * Get active offers for a specific date
  */ async function getActiveOffersForDate(date) {
-    return __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].offer.findMany({
+    const offers = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].offer.findMany({
         where: {
             isActive: true,
             startDate: {
@@ -278,19 +278,43 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$de
             offerPrices: true
         }
     });
+    // Synthesize percentage offers into per-ticket offerPrices when needed
+    const tickets = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].ticket.findMany({
+        where: {
+            isActive: true
+        },
+        select: {
+            id: true,
+            customerPrice: true
+        }
+    });
+    return offers.map((o)=>{
+        const match = (o.description || "").match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+        if (!match) return o;
+        const pct = parseFloat(match[1]);
+        const computed = tickets.map((t)=>({
+                ticketId: t.id,
+                offerPrice: Math.max(0, Number(t.customerPrice) * (1 - pct / 100))
+            }));
+        return {
+            ...o,
+            offerPrices: computed
+        };
+    });
 }
 /**
  * Calculate best price for a ticket based on active offers
  */ function getBestPrice(ticketId, customerPrice, agentPrice, offers, isAgent) {
-    let bestPrice = isAgent ? agentPrice : customerPrice;
+    let bestPrice = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$decimal$2e$js$40$10$2e$6$2e$0$2f$node_modules$2f$decimal$2e$js$2f$decimal$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"](isAgent ? agentPrice : customerPrice);
     let isOfferApplied = false;
     let offerId;
     // Find the lowest price across all active offers
     for (const offer of offers){
         for (const offerPrice of offer.offerPrices){
             if (offerPrice.ticketId === ticketId) {
-                if (offerPrice.offerPrice < bestPrice) {
-                    bestPrice = offerPrice.offerPrice;
+                const candidate = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$decimal$2e$js$40$10$2e$6$2e$0$2f$node_modules$2f$decimal$2e$js$2f$decimal$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"](offerPrice.offerPrice);
+                if (candidate.lessThan(bestPrice)) {
+                    bestPrice = candidate;
                     isOfferApplied = true;
                     offerId = offer.id;
                 }

@@ -24,6 +24,9 @@ export async function GET(
           include: { ticket: true },
         },
         offer: true,
+        agent: {
+          select: { id: true, name: true, role: true },
+        },
       },
     });
 
@@ -57,6 +60,13 @@ export async function GET(
       validatedAt: booking.validatedAt,
       offerApplied: booking.offer
         ? { id: booking.offer.id, name: booking.offer.name }
+        : null,
+      agent: booking.agent
+        ? {
+            id: booking.agent.id,
+            name: booking.agent.name,
+            role: booking.agent.role,
+          }
         : null,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,

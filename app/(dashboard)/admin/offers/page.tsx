@@ -49,6 +49,8 @@ const emptyForm = {
   startDate: "",
   endDate: "",
   prices: {} as Record<number, number>,
+  percentageEnabled: false,
+  percentage: 0,
 };
 
 export default function AdminOffersPage() {
@@ -89,6 +91,7 @@ export default function AdminOffersPage() {
       const mappedOffers: AdminOffer[] = (offersRes.data || []).map((offer: any) => ({
         id: offer.id,
         name: offer.name,
+        description: offer.description || "",
         startDate: new Date(offer.startDate).toISOString().split("T")[0],
         endDate: new Date(offer.endDate).toISOString().split("T")[0],
         isActive: !!offer.isActive,
@@ -133,11 +136,17 @@ export default function AdminOffersPage() {
     offer.prices.forEach((p) => {
       prices[p.ticketCategoryId] = p.offerPrice;
     });
+    const desc = (offer as any).description || "";
+    const m = desc.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+    const percentageEnabled = !!m;
+    const percentage = m ? parseFloat(m[1]) : 0;
     setForm({
       name: offer.name,
       startDate: offer.startDate,
       endDate: offer.endDate,
       prices,
+      percentageEnabled,
+      percentage,
     });
     setError("");
     setShowForm(true);
@@ -167,16 +176,24 @@ export default function AdminOffersPage() {
     }));
 
     try {
-      const payload = {
+      const payload: any = {
         name: form.name,
         startDate: form.startDate,
         endDate: form.endDate,
-        isActive: false,
-        offerPrices: prices.map((p) => ({
+      };
+      // Only set isActive on create (keep current status on edit)
+      if (!editingId) {
+        payload.isActive = false;
+      }
+      if (form.percentageEnabled) {
+        payload.percentageEnabled = true;
+        payload.percentage = Number(form.percentage);
+      } else {
+        payload.offerPrices = prices.map((p) => ({
           ticketId: p.ticketCategoryId,
           offerPrice: p.offerPrice,
-        })),
-      };
+        }));
+      }
 
       const response = editingId
         ? await apiPut(`/api/admin/offers/${editingId}`, payload)
@@ -395,6 +412,38 @@ export default function AdminOffersPage() {
 
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">
+                  Global Percentage Discount
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={(form as any).percentageEnabled}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, percentageEnabled: e.target.checked }))
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Apply percentage to all tickets
+                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">%</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={(form as any).percentage}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, percentage: Number(e.target.value) }))
+                      }
+                      disabled={!(form as any).percentageEnabled}
+                      className="w-24 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-medium text-foreground">
                   Offer Prices per Category
                 </p>
                 <div className="flex flex-col gap-2">
@@ -419,7 +468,8 @@ export default function AdminOffersPage() {
                               },
                             }))
                           }
-                          className="w-full rounded-md border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary"
+                          disabled={(form as any).percentageEnabled}
+                          className="w-full rounded-md border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary disabled:opacity-50"
                         />
                       </div>
                     </div>

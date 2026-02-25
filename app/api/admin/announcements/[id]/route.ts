@@ -84,20 +84,17 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, message, type, isActive, displayOrder } = body;
-
-    if (displayOrder !== undefined && displayOrder < 1) {
-      throw new ValidationError("displayOrder must be >= 1", "displayOrder");
-    }
+    const { title, content, message, type, isActive, priority, validFrom, validTo, audience } = body;
 
     const updated = await prisma.announcement.update({
       where: { id: announcementId },
       data: {
         ...(title && { title }),
-        ...(message && { message }),
+        ...(content || message
+          ? { content: embedMeta(content || message, { priority, validFrom, validTo, audience }) }
+          : {}),
         ...(type && { type }),
         ...(isActive !== undefined && { isActive }),
-        ...(displayOrder !== undefined && { displayOrder }),
       },
     });
 
@@ -134,6 +131,14 @@ export async function PUT(
       { status: 500 },
     );
   }
+}
+
+function embedMeta(content: string, meta: any) {
+  let out = (content || "").replace(/\s*\[(PRIORITY|VALID|AUDIENCE):[^\]]+\]\s*/gi, "").trim();
+  if (meta?.priority !== undefined) out += ` [PRIORITY:${Number(meta.priority) || 0}]`;
+  if (meta?.validFrom && meta?.validTo) out += ` [VALID:${meta.validFrom},${meta.validTo}]`;
+  if (meta?.audience) out += ` [AUDIENCE:${String(meta.audience).toUpperCase()}]`;
+  return out.trim();
 }
 
 export async function DELETE(

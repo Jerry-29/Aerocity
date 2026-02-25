@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -17,21 +17,67 @@ import {
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { formatPrice } from "@/lib/utils";
-import { mockBookings } from "@/lib/admin-data";
+import { apiGet, apiPost, apiPut, isSuccessResponse } from "@/lib/api-client";
 
 export default function AdminBookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const reference = params.reference as string;
-  const booking = mockBookings.find((b) => b.bookingReference === reference);
+  const [booking, setBooking] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [showCancel, setShowCancel] = useState(false);
   const [showValidate, setShowValidate] = useState(false);
 
+  const refresh = async () => {
+    setLoading(true);
+    setError("");
+    const res = await apiGet<any>(`/api/admin/bookings/${reference}`);
+    if (!isSuccessResponse(res)) {
+      setError(res.message || "Failed to load booking");
+      setBooking(null);
+      setLoading(false);
+      return;
+    }
+    setBooking(res.data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (reference) void refresh();
+  }, [reference]);
+
+  const totals = useMemo(() => {
+    if (!booking?.items?.length) {
+      return { base: 0, applied: Number(booking?.totalAmount) || 0, discount: 0, final: Number(booking?.totalAmount) || 0, tickets: 0 };
+    }
+    const base = booking.items.reduce(
+      (s: number, i: any) => s + Number(i.basePrice) * i.quantity,
+      0,
+    );
+    const applied = booking.items.reduce(
+      (s: number, i: any) => s + Number(i.appliedPrice) * i.quantity,
+      0,
+    );
+    const tickets = booking.items.reduce((s: number, i: any) => s + i.quantity, 0);
+    return { base, applied, discount: Math.max(0, base - applied), final: applied, tickets };
+  }, [booking]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-lg font-semibold text-foreground">Loading booking...</p>
+      </div>
+    );
+  }
+
   if (!booking) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-semibold text-foreground">Booking not found</p>
+        <p className="text-lg font-semibold text-foreground">
+          {error || "Booking not found"}
+        </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Reference: {reference}
         </p>
@@ -46,7 +92,8 @@ export default function AdminBookingDetailPage() {
     );
   }
 
-  const totalTickets = booking.items.reduce((s, i) => s + i.quantity, 0);
+  const paymentMethod =
+    booking.razorpayPaymentId || booking.razorpayOrderId ? "ONLINE" : "OFFLINE";
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,7 +155,7 @@ export default function AdminBookingDetailPage() {
                 <CreditCard className="mt-0.5 h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">Payment Method</p>
-                  <StatusBadge status={booking.paymentMethod} />
+                  <StatusBadge status={paymentMethod} />
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -153,11 +200,17 @@ export default function AdminBookingDetailPage() {
                   </span>
                 </div>
               )}
-              {booking.agentName && (
+              {booking.bookedByRole === "AGENT" && (
                 <div className="mt-2 rounded-lg bg-muted/50 p-3">
-                  <p className="text-xs text-muted-foreground">Booked by Agent</p>
+                  <p className="text-xs text-muted-foreground">
+                    {booking.agent?.role === "ADMIN" ? "Booked by Admin" : "Booked by Agent"}
+                  </p>
                   <p className="text-sm font-medium text-foreground">
-                    {booking.agentName}
+                    {booking.agent?.name
+                      ? booking.agent.name
+                      : booking.agentId
+                      ? `ID: ${booking.agentId}`
+                      : "-"}
                   </p>
                 </div>
               )}
@@ -225,26 +278,26 @@ export default function AdminBookingDetailPage() {
                   Total Tickets
                 </span>
                 <span className="font-medium text-foreground">
-                  {totalTickets}
+                  {totals.tickets}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground">
-                  {formatPrice(booking.totalAmount)}
+                  {formatPrice(totals.base)}
                 </span>
               </div>
-              {booking.discountAmount > 0 && (
+              {totals.discount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Discount</span>
-                  <span>-{formatPrice(booking.discountAmount)}</span>
+                  <span>-{formatPrice(totals.discount)}</span>
                 </div>
               )}
               <div className="border-t pt-2">
                 <div className="flex justify-between text-base font-bold">
-                  <span className="text-foreground">Total Paid</span>
+                  <span className="text-foreground">Total</span>
                   <span className="text-primary">
-                    {formatPrice(booking.finalAmount)}
+                    {formatPrice(totals.final)}
                   </span>
                 </div>
               </div>
@@ -307,12 +360,19 @@ export default function AdminBookingDetailPage() {
       <ConfirmDialog
         open={showCancel}
         title="Cancel Booking"
-        description={`Are you sure you want to cancel booking ${booking.bookingReference}? This action cannot be undone and a refund may need to be processed.`}
+        description={`Are you sure you want to cancel booking ${booking.bookingReference}? This will process a refund if applicable.`}
         confirmLabel="Cancel Booking"
         variant="destructive"
-        onConfirm={() => {
+        onConfirm={async () => {
           setShowCancel(false);
-          // Will call API
+          const res = await apiPost(`/api/admin/bookings/${booking.bookingReference}/refund`, {
+            reason: "Admin cancelled booking",
+          });
+          if (isSuccessResponse(res)) {
+            await refresh();
+          } else {
+            setError(res.message || "Failed to process refund");
+          }
         }}
         onCancel={() => setShowCancel(false)}
       />
@@ -321,9 +381,14 @@ export default function AdminBookingDetailPage() {
         title="Validate Entry"
         description={`Mark booking ${booking.bookingReference} as validated? This confirms the customer has entered the park.`}
         confirmLabel="Validate"
-        onConfirm={() => {
+        onConfirm={async () => {
           setShowValidate(false);
-          // Will call API
+          const res = await apiPut(`/api/admin/bookings/${booking.bookingReference}/validate`);
+          if (isSuccessResponse(res)) {
+            await refresh();
+          } else {
+            setError(res.message || "Failed to validate booking");
+          }
         }}
         onCancel={() => setShowValidate(false)}
       />

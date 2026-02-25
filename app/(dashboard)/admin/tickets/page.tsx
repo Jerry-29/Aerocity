@@ -13,17 +13,27 @@ import {
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatPrice } from "@/lib/utils";
 import type { AdminTicketCategory } from "@/lib/admin-types";
-import { apiGet, apiPut, isSuccessResponse } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut, isSuccessResponse } from "@/lib/api-client";
 
 export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState<AdminTicketCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [editing, setEditing] = useState<AdminTicketCategory | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string>("");
+  // Use string inputs to avoid Number("") flicker to 0 while typing
   const [form, setForm] = useState({
-    basePrice: 0,
-    offerPrice: 0,
-    agentPrice: 0,
+    basePrice: "",
+    agentPrice: "",
+  });
+  const [addForm, setAddForm] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    basePrice: "",
+    agentPrice: "",
+    heightRequirement: "",
   });
   const [saving, setSaving] = useState(false);
   const hasFetchedRef = useRef(false);
@@ -54,30 +64,31 @@ export default function AdminTicketsPage() {
   const openEdit = (t: AdminTicketCategory) => {
     setEditing(t);
     setForm({
-      basePrice: t.basePrice,
-      offerPrice: t.offerPrice ?? 0,
-      agentPrice: t.agentPrice,
+      basePrice: String(t.basePrice ?? ""),
+      agentPrice: String(t.agentPrice ?? ""),
     });
     setError("");
   };
 
   const handleSave = async () => {
     setError("");
-    if (form.agentPrice > form.basePrice) {
-      setError("Agent price cannot exceed base price");
+    const baseNum = parseFloat(form.basePrice);
+    const agentNum = parseFloat(form.agentPrice);
+    if (isNaN(baseNum) || isNaN(agentNum)) {
+      setError("Enter valid numbers for prices");
       return;
     }
-    if (form.offerPrice > 0 && form.offerPrice > form.basePrice) {
-      setError("Offer price cannot exceed base price");
+    if (agentNum > baseNum) {
+      setError("Agent price cannot exceed base price");
       return;
     }
     setSaving(true);
     try {
       if (editing?.id) {
+        // API expects customerPrice (base) and agentPrice
         await apiPut(`/api/admin/tickets/${editing.id}`, {
-          basePrice: form.basePrice,
-          offerPrice: form.offerPrice || null,
-          agentPrice: form.agentPrice,
+          customerPrice: baseNum,
+          agentPrice: agentNum,
         });
         fetchTickets();
       }
@@ -96,6 +107,63 @@ export default function AdminTicketsPage() {
     );
   };
 
+  const canCreate = () => {
+    const baseNum = parseFloat(addForm.basePrice);
+    const agentNum = parseFloat(addForm.agentPrice);
+    return (
+      addForm.name.trim().length > 0 &&
+      addForm.slug.trim().length > 0 &&
+      !isNaN(baseNum) &&
+      !isNaN(agentNum) &&
+      baseNum >= 0 &&
+      agentNum >= 0 &&
+      agentNum <= baseNum
+    );
+  };
+
+  const handleCreate = async () => {
+    setAddError("");
+    if (!canCreate()) {
+      setAddError("Please fill all fields correctly. Agent price cannot exceed base price.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const baseNum = parseFloat(addForm.basePrice);
+      const agentNum = parseFloat(addForm.agentPrice);
+      const res = await apiPost("/api/admin/tickets", {
+        name: addForm.name.trim(),
+        slug: addForm.slug.trim(),
+        description: addForm.description.trim() || null,
+        customerPrice: baseNum,
+        agentPrice: agentNum,
+        heightRequirement: addForm.heightRequirement
+          ? Number(addForm.heightRequirement)
+          : null,
+        isActive: true,
+      });
+      if (!isSuccessResponse(res)) {
+        throw new Error(res.message || "Failed to create ticket");
+      }
+      setAdding(false);
+      setAddForm({
+        name: "",
+        slug: "",
+        description: "",
+        basePrice: "",
+        agentPrice: "",
+        heightRequirement: "",
+      });
+      fetchTickets();
+    } catch (err) {
+      setAddError(
+        err instanceof Error ? err.message : "Failed to create ticket",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -105,6 +173,19 @@ export default function AdminTicketsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Manage ticket categories and pricing
         </p>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setAddError("");
+            setAdding(true);
+          }}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          Add Ticket
+        </button>
       </div>
 
       {/* Loading State */}
@@ -247,41 +328,22 @@ export default function AdminTicketsPage() {
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
-                    type="number"
-                    min={0}
+                    inputMode="decimal"
                     value={form.basePrice}
+                    onFocus={(e) => {
+                      if (e.target.value === "0") e.target.select();
+                    }}
                     onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        basePrice: Number(e.target.value),
-                      }))
+                      setForm((p) => ({ ...p, basePrice: e.target.value }))
                     }
+                    onBlur={(e) => {
+                      if (e.target.value.trim() === "") {
+                        setForm((p) => ({ ...p, basePrice: String(editing?.basePrice ?? "") }));
+                      }
+                    }}
                     className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Offer Price (INR)
-                </label>
-                <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.offerPrice}
-                    onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        offerPrice: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Set to 0 to remove offer pricing
-                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -290,15 +352,19 @@ export default function AdminTicketsPage() {
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
-                    type="number"
-                    min={0}
+                    inputMode="decimal"
                     value={form.agentPrice}
+                    onFocus={(e) => {
+                      if (e.target.value === "0") e.target.select();
+                    }}
                     onChange={(e) =>
-                      setForm((p) => ({
-                        ...p,
-                        agentPrice: Number(e.target.value),
-                      }))
+                      setForm((p) => ({ ...p, agentPrice: e.target.value }))
                     }
+                    onBlur={(e) => {
+                      if (e.target.value.trim() === "") {
+                        setForm((p) => ({ ...p, agentPrice: String(editing?.agentPrice ?? "") }));
+                      }
+                    }}
                     className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
@@ -321,6 +387,140 @@ export default function AdminTicketsPage() {
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Modal */}
+      {adding && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+            onClick={() => setAdding(false)}
+            aria-hidden="true"
+          />
+          <div className="relative mx-4 w-full max-w-md rounded-xl border bg-card p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">Add Ticket Category</h3>
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {addError && (
+              <div className="mt-3 rounded-lg bg-destructive/10 p-2.5 text-sm text-destructive">
+                {addError}
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Name</label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Adult With Food"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Slug</label>
+                <input
+                  type="text"
+                  value={addForm.slug}
+                  onChange={(e) =>
+                    setAddForm((p) => ({ ...p, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") }))
+                  }
+                  placeholder="adult-with-food"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
+                <input
+                  type="text"
+                  value={addForm.description}
+                  onChange={(e) => setAddForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Full day access with buffet lunch"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Base Price (INR)</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    inputMode="decimal"
+                    value={addForm.basePrice}
+                    onFocus={(e) => {
+                      if (e.target.value === "0") e.target.select();
+                    }}
+                    onChange={(e) => setAddForm((p) => ({ ...p, basePrice: e.target.value }))}
+                    onBlur={(e) => {
+                      if (e.target.value.trim() === "") {
+                        setAddForm((p) => ({ ...p, basePrice: "" }));
+                      }
+                    }}
+                    className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Agent Price (INR)</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    inputMode="decimal"
+                    value={addForm.agentPrice}
+                    onFocus={(e) => {
+                      if (e.target.value === "0") e.target.select();
+                    }}
+                    onChange={(e) => setAddForm((p) => ({ ...p, agentPrice: e.target.value }))}
+                    onBlur={(e) => {
+                      if (e.target.value.trim() === "") {
+                        setAddForm((p) => ({ ...p, agentPrice: "" }));
+                      }
+                    }}
+                    className="w-full rounded-lg border bg-background py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Height Requirement (cm)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={addForm.heightRequirement}
+                  onChange={(e) => setAddForm((p) => ({ ...p, heightRequirement: e.target.value }))}
+                  placeholder="120"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="rounded-lg border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={saving}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Create
               </button>
             </div>
           </div>

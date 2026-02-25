@@ -284,7 +284,9 @@ const emptyForm = {
     name: "",
     startDate: "",
     endDate: "",
-    prices: {}
+    prices: {},
+    percentageEnabled: false,
+    percentage: 0
 };
 function AdminOffersPage() {
     _s();
@@ -319,6 +321,7 @@ function AdminOffersPage() {
             const mappedOffers = (offersRes.data || []).map((offer)=>({
                     id: offer.id,
                     name: offer.name,
+                    description: offer.description || "",
                     startDate: new Date(offer.startDate).toISOString().split("T")[0],
                     endDate: new Date(offer.endDate).toISOString().split("T")[0],
                     isActive: !!offer.isActive,
@@ -366,11 +369,17 @@ function AdminOffersPage() {
         offer.prices.forEach((p)=>{
             prices[p.ticketCategoryId] = p.offerPrice;
         });
+        const desc = offer.description || "";
+        const m = desc.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+        const percentageEnabled = !!m;
+        const percentage = m ? parseFloat(m[1]) : 0;
         setForm({
             name: offer.name,
             startDate: offer.startDate,
             endDate: offer.endDate,
-            prices
+            prices,
+            percentageEnabled,
+            percentage
         });
         setError("");
         setShowForm(true);
@@ -400,13 +409,21 @@ function AdminOffersPage() {
             const payload = {
                 name: form.name,
                 startDate: form.startDate,
-                endDate: form.endDate,
-                isActive: false,
-                offerPrices: prices.map((p)=>({
+                endDate: form.endDate
+            };
+            // Only set isActive on create (keep current status on edit)
+            if (!editingId) {
+                payload.isActive = false;
+            }
+            if (form.percentageEnabled) {
+                payload.percentageEnabled = true;
+                payload.percentage = Number(form.percentage);
+            } else {
+                payload.offerPrices = prices.map((p)=>({
                         ticketId: p.ticketCategoryId,
                         offerPrice: p.offerPrice
-                    }))
-            };
+                    }));
+            }
             const response = editingId ? await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiPut"])("/api/admin/offers/".concat(editingId), payload) : await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["apiPost"])("/api/admin/offers", payload);
             if (!(0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$api$2d$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["isSuccessResponse"])(response)) {
                 throw new Error(response.message || "Failed to save offer");
@@ -449,7 +466,7 @@ function AdminOffersPage() {
                                 children: "Offer Management"
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 222,
+                                lineNumber: 239,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -457,13 +474,13 @@ function AdminOffersPage() {
                                 children: "Create and manage special offers"
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 225,
+                                lineNumber: 242,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 221,
+                        lineNumber: 238,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -475,20 +492,20 @@ function AdminOffersPage() {
                                 className: "h-4 w-4"
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 234,
+                                lineNumber: 251,
                                 columnNumber: 11
                             }, this),
                             "Create Offer"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 229,
+                        lineNumber: 246,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 220,
+                lineNumber: 237,
                 columnNumber: 7
             }, this),
             activeOffer && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -503,12 +520,12 @@ function AdminOffersPage() {
                                     className: "h-5 w-5 text-green-700"
                                 }, void 0, false, {
                                     fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                    lineNumber: 244,
+                                    lineNumber: 261,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 243,
+                                lineNumber: 260,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -521,7 +538,7 @@ function AdminOffersPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 247,
+                                        lineNumber: 264,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -534,19 +551,19 @@ function AdminOffersPage() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 250,
+                                        lineNumber: 267,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 246,
+                                lineNumber: 263,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 242,
+                        lineNumber: 259,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -558,20 +575,20 @@ function AdminOffersPage() {
                                 className: "h-3.5 w-3.5"
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 261,
+                                lineNumber: 278,
                                 columnNumber: 13
                             }, this),
                             "Deactivate"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 256,
+                        lineNumber: 273,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 241,
+                lineNumber: 258,
                 columnNumber: 9
             }, this),
             loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -579,7 +596,7 @@ function AdminOffersPage() {
                 children: "Loading offers..."
             }, void 0, false, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 268,
+                lineNumber: 285,
                 columnNumber: 9
             }, this),
             !loading && error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -587,7 +604,7 @@ function AdminOffersPage() {
                 children: error
             }, void 0, false, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 274,
+                lineNumber: 291,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$dashboard$2f$data$2d$table$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["DataTable"], {
@@ -609,7 +626,7 @@ function AdminOffersPage() {
                                         children: "Edit"
                                     }, void 0, false, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 288,
+                                        lineNumber: 305,
                                         columnNumber: 17
                                     }, void 0),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -622,13 +639,13 @@ function AdminOffersPage() {
                                         children: row.isActive ? "Deactivate" : "Activate"
                                     }, void 0, false, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 298,
+                                        lineNumber: 315,
                                         columnNumber: 17
                                     }, void 0)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 287,
+                                lineNumber: 304,
                                 columnNumber: 15
                             }, void 0)
                     }
@@ -638,7 +655,7 @@ function AdminOffersPage() {
                 emptyMessage: "No offers created yet"
             }, void 0, false, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 280,
+                lineNumber: 297,
                 columnNumber: 7
             }, this),
             showForm && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -650,7 +667,7 @@ function AdminOffersPage() {
                         "aria-hidden": "true"
                     }, void 0, false, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 324,
+                        lineNumber: 341,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -664,7 +681,7 @@ function AdminOffersPage() {
                                         children: editingId ? "Edit Offer" : "Create New Offer"
                                     }, void 0, false, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 331,
+                                        lineNumber: 348,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -675,18 +692,18 @@ function AdminOffersPage() {
                                             className: "h-5 w-5"
                                         }, void 0, false, {
                                             fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                            lineNumber: 339,
+                                            lineNumber: 356,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 334,
+                                        lineNumber: 351,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 330,
+                                lineNumber: 347,
                                 columnNumber: 13
                             }, this),
                             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -694,7 +711,7 @@ function AdminOffersPage() {
                                 children: error
                             }, void 0, false, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 344,
+                                lineNumber: 361,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -707,7 +724,7 @@ function AdminOffersPage() {
                                                 children: "Offer Name"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 351,
+                                                lineNumber: 368,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -721,13 +738,13 @@ function AdminOffersPage() {
                                                 className: "w-full rounded-lg border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 354,
+                                                lineNumber: 371,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 350,
+                                        lineNumber: 367,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -742,14 +759,14 @@ function AdminOffersPage() {
                                                                 className: "mr-1 inline h-3.5 w-3.5"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                lineNumber: 368,
+                                                                lineNumber: 385,
                                                                 columnNumber: 21
                                                             }, this),
                                                             "Start Date"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                        lineNumber: 367,
+                                                        lineNumber: 384,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -762,13 +779,13 @@ function AdminOffersPage() {
                                                         className: "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                        lineNumber: 371,
+                                                        lineNumber: 388,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 366,
+                                                lineNumber: 383,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -780,14 +797,14 @@ function AdminOffersPage() {
                                                                 className: "mr-1 inline h-3.5 w-3.5"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                lineNumber: 382,
+                                                                lineNumber: 399,
                                                                 columnNumber: 21
                                                             }, this),
                                                             "End Date"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                        lineNumber: 381,
+                                                        lineNumber: 398,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -800,19 +817,97 @@ function AdminOffersPage() {
                                                         className: "w-full rounded-lg border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                        lineNumber: 385,
+                                                        lineNumber: 402,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 380,
+                                                lineNumber: 397,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 365,
+                                        lineNumber: 382,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                className: "mb-2 text-sm font-medium text-foreground",
+                                                children: "Global Percentage Discount"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                lineNumber: 414,
+                                                columnNumber: 17
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "flex items-center gap-3",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "checkbox",
+                                                        checked: form.percentageEnabled,
+                                                        onChange: (e)=>setForm((p)=>({
+                                                                    ...p,
+                                                                    percentageEnabled: e.target.checked
+                                                                }))
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                        lineNumber: 418,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "text-sm text-muted-foreground",
+                                                        children: "Apply percentage to all tickets"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                        lineNumber: 425,
+                                                        columnNumber: 19
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        className: "ml-auto flex items-center gap-2",
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                className: "text-xs text-muted-foreground",
+                                                                children: "%"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                                lineNumber: 429,
+                                                                columnNumber: 21
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                                type: "number",
+                                                                min: 0,
+                                                                max: 100,
+                                                                value: form.percentage,
+                                                                onChange: (e)=>setForm((p)=>({
+                                                                            ...p,
+                                                                            percentage: Number(e.target.value)
+                                                                        })),
+                                                                disabled: !form.percentageEnabled,
+                                                                className: "w-24 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary disabled:opacity-50"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                                lineNumber: 430,
+                                                                columnNumber: 21
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                        lineNumber: 428,
+                                                        columnNumber: 19
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                                lineNumber: 417,
+                                                columnNumber: 17
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
+                                        lineNumber: 413,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -822,7 +917,7 @@ function AdminOffersPage() {
                                                 children: "Offer Prices per Category"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 397,
+                                                lineNumber: 446,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -835,7 +930,7 @@ function AdminOffersPage() {
                                                                 children: t.name
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                lineNumber: 406,
+                                                                lineNumber: 455,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -845,7 +940,7 @@ function AdminOffersPage() {
                                                                         className: "absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                        lineNumber: 408,
+                                                                        lineNumber: 457,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -859,39 +954,40 @@ function AdminOffersPage() {
                                                                                         [t.id]: Number(e.target.value)
                                                                                     }
                                                                                 })),
-                                                                        className: "w-full rounded-md border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary"
+                                                                        disabled: form.percentageEnabled,
+                                                                        className: "w-full rounded-md border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary disabled:opacity-50"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                        lineNumber: 409,
+                                                                        lineNumber: 458,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                                lineNumber: 407,
+                                                                lineNumber: 456,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, t.id, true, {
                                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                        lineNumber: 402,
+                                                        lineNumber: 451,
                                                         columnNumber: 21
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 400,
+                                                lineNumber: 449,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 396,
+                                        lineNumber: 445,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 349,
+                                lineNumber: 366,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -904,7 +1000,7 @@ function AdminOffersPage() {
                                         children: "Cancel"
                                     }, void 0, false, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 432,
+                                        lineNumber: 482,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -917,38 +1013,38 @@ function AdminOffersPage() {
                                                 className: "h-4 w-4 animate-spin"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                                lineNumber: 445,
+                                                lineNumber: 495,
                                                 columnNumber: 28
                                             }, this),
                                             editingId ? "Save Changes" : "Create Offer"
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                        lineNumber: 439,
+                                        lineNumber: 489,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                                lineNumber: 431,
+                                lineNumber: 481,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                        lineNumber: 329,
+                        lineNumber: 346,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-                lineNumber: 323,
+                lineNumber: 340,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/(dashboard)/admin/offers/page.tsx",
-        lineNumber: 219,
+        lineNumber: 236,
         columnNumber: 5
     }, this);
 }

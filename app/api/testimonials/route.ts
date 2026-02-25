@@ -10,16 +10,20 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const featured = searchParams.get("featured") === "true";
 
+    const where: any = {
+      isApproved: true,
+    };
+    if (featured) {
+      where.isFeatured = true;
+    }
+
     const testimonials = await prisma.testimonial.findMany({
-      where: {
-        isApproved: true,
-        ...(featured && { isFeatured: true }),
-      },
-      orderBy: {
-        isFeatured: "desc",
-        displayOrder: "asc",
-        createdAt: "desc",
-      },
+      where,
+      orderBy: [
+        { isFeatured: "desc" },
+        { displayOrder: "asc" },
+        { createdAt: "desc" },
+      ],
       select: {
         id: true,
         name: true,

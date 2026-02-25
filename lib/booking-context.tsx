@@ -78,8 +78,9 @@ export function BookingProvider({
       if (quantity > 0) {
         const cat = categories.find((c) => c.id === categoryId);
         if (!cat) return prev;
+        const hasActiveOffer = (offer && offer.isActive) || !!prev.offerApplied;
         const unitPrice =
-          formData.offerApplied && cat.offerPrice ? cat.offerPrice : cat.basePrice;
+          hasActiveOffer && cat.offerPrice ? cat.offerPrice : cat.basePrice;
         existing.push({
           categoryId,
           categoryName: cat.name,
@@ -110,7 +111,8 @@ export function BookingProvider({
       const updatedTickets = prev.tickets.map((t) => {
         const cat = categories.find((c) => c.id === t.categoryId);
         if (!cat) return t;
-        const unitPrice = newOffer && cat.offerPrice ? cat.offerPrice : cat.basePrice;
+        const unitPrice =
+          newOffer && cat.offerPrice ? cat.offerPrice : cat.basePrice;
         return {
           ...t,
           unitPrice,
