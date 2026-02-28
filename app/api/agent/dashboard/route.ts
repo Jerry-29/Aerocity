@@ -73,7 +73,15 @@ export async function GET(request: NextRequest) {
           totalBookings,
           revenueThisMonth: Number(revenueThisMonth._sum.totalAmount || 0),
         },
-        recentBookings: recentBookings.map((booking) => ({
+        recentBookings: recentBookings.map((booking: {
+          id: number;
+          bookingReference: string;
+          visitDate: Date | string;
+          customerName: string;
+          totalAmount: any;
+          paymentStatus: string;
+          createdAt: Date | string;
+        }) => ({
           id: booking.id,
           bookingReference: booking.bookingReference,
           visitDate: booking.visitDate,
