@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       select: { id: true, customerPrice: true },
     });
 
-    const withComputed = offers.map((o) => {
+    const withComputed = offers.map((o:any) => {
       const match = (o.description || "").match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
       if (!match) {
         return {

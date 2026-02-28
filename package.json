@@ -9,6 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "typecheck:next": "next build --no-lint",
+    "audit:api:any": "node scripts/audit-implicit-any-maps.js",
     "test": "playwright test",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
