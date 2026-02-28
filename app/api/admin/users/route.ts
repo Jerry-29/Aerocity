@@ -1,12 +1,12 @@
 // app/api/admin/users/route.ts - User management (list agents and create new agents)
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateUserCreationRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse, createPaginatedResponse } from "@/lib/responses";
 import { ForbiddenError, ValidationError, ConflictError } from "@/lib/errors";
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
+// import type { Prisma } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,13 +67,17 @@ export async function GET(request: NextRequest) {
           })
         : [];
 
-    const statsMap = new Map<number, { totalBookings: number; totalRevenue: Prisma.Decimal | number }>();
+    const statsMap = new Map<number, { totalBookings: number; totalRevenue: number }>();
     for (const s of bookingStats) {
       if (s.agentId === null || s.agentId === undefined) continue;
-      const revenue = s._sum?.totalAmount || 0;
+      const revenue = (s as any)?._sum?.totalAmount ?? 0;
+      const revenueNumber =
+        revenue && typeof revenue === "object" && typeof (revenue as any).toNumber === "function"
+          ? (revenue as any).toNumber()
+          : Number(revenue || 0);
       statsMap.set(s.agentId, {
         totalBookings: s._count?._all || 0,
-        totalRevenue: revenue,
+        totalRevenue: revenueNumber,
       });
     }
 
