@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const validation = validateAnnouncementRequest(body);
     if (!validation.valid) {
-      throw new ValidationError(validation.message, validation.field);
+      throw new ValidationError(validation.message || "Invalid announcement data", validation.field || undefined);
     }
 
     const { title, content, message, type, isActive, priority, validFrom, validTo, audience } = body;

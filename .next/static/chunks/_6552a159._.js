@@ -1990,9 +1990,6 @@ function StepPayment() {
             const booking = bookingResponse.data;
             setBookingReference(booking.bookingReference);
             setBookingTotalAmount(Number(booking.totalAmount));
-            console.log("✅ Booking created:", booking.bookingReference);
-            console.log("💰 Total Amount from booking:", booking.totalAmount);
-            console.log("💰 Razorpay Order ID:", booking.razorpayOrderId);
             // Step 2: Initialize Razorpay payment
             if (!window.Razorpay) {
                 throw new Error("Razorpay SDK not loaded");
@@ -2099,7 +2096,7 @@ function StepPayment() {
                 children: "Payment"
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 222,
+                lineNumber: 219,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2107,7 +2104,7 @@ function StepPayment() {
                 children: "Complete your payment to confirm your booking. Your payment is secured and processed by Razorpay."
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 225,
+                lineNumber: 222,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2118,7 +2115,7 @@ function StepPayment() {
                         children: "Payment Summary"
                     }, void 0, false, {
                         fileName: "[project]/components/booking/step-payment.tsx",
-                        lineNumber: 232,
+                        lineNumber: 229,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2136,7 +2133,7 @@ function StepPayment() {
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/booking/step-payment.tsx",
-                                            lineNumber: 241,
+                                            lineNumber: 238,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2144,13 +2141,13 @@ function StepPayment() {
                                             children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPrice"])(t.totalPrice)
                                         }, void 0, false, {
                                             fileName: "[project]/components/booking/step-payment.tsx",
-                                            lineNumber: 244,
+                                            lineNumber: 241,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, t.categoryId, true, {
                                     fileName: "[project]/components/booking/step-payment.tsx",
-                                    lineNumber: 237,
+                                    lineNumber: 234,
                                     columnNumber: 13
                                 }, this)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2161,7 +2158,7 @@ function StepPayment() {
                                         children: "Total"
                                     }, void 0, false, {
                                         fileName: "[project]/components/booking/step-payment.tsx",
-                                        lineNumber: 250,
+                                        lineNumber: 247,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2169,25 +2166,25 @@ function StepPayment() {
                                         children: (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatPrice"])(displayAmount)
                                     }, void 0, false, {
                                         fileName: "[project]/components/booking/step-payment.tsx",
-                                        lineNumber: 253,
+                                        lineNumber: 250,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/booking/step-payment.tsx",
-                                lineNumber: 249,
+                                lineNumber: 246,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/booking/step-payment.tsx",
-                        lineNumber: 235,
+                        lineNumber: 232,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 231,
+                lineNumber: 228,
                 columnNumber: 7
             }, this),
             isInitializing && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2197,12 +2194,12 @@ function StepPayment() {
                     children: "🔄 Initializing payment system..."
                 }, void 0, false, {
                     fileName: "[project]/components/booking/step-payment.tsx",
-                    lineNumber: 263,
+                    lineNumber: 260,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 262,
+                lineNumber: 259,
                 columnNumber: 9
             }, this),
             bookingReference && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2215,12 +2212,12 @@ function StepPayment() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/booking/step-payment.tsx",
-                    lineNumber: 271,
+                    lineNumber: 268,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 270,
+                lineNumber: 267,
                 columnNumber: 9
             }, this),
             razorpayOrderId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2233,12 +2230,12 @@ function StepPayment() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/booking/step-payment.tsx",
-                    lineNumber: 279,
+                    lineNumber: 276,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 278,
+                lineNumber: 275,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2248,7 +2245,7 @@ function StepPayment() {
                         className: "mt-0.5 h-4 w-4 shrink-0 text-secondary"
                     }, void 0, false, {
                         fileName: "[project]/components/booking/step-payment.tsx",
-                        lineNumber: 287,
+                        lineNumber: 284,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2259,26 +2256,26 @@ function StepPayment() {
                                 children: "🔒 Secure Payment"
                             }, void 0, false, {
                                 fileName: "[project]/components/booking/step-payment.tsx",
-                                lineNumber: 289,
+                                lineNumber: 286,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                 children: "Your payment is processed securely via Razorpay. We do not store any card details. All transactions are encrypted and PCI DSS compliant."
                             }, void 0, false, {
                                 fileName: "[project]/components/booking/step-payment.tsx",
-                                lineNumber: 290,
+                                lineNumber: 287,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/booking/step-payment.tsx",
-                        lineNumber: 288,
+                        lineNumber: 285,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 286,
+                lineNumber: 283,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2291,7 +2288,7 @@ function StepPayment() {
                             className: "h-5 w-5 animate-spin"
                         }, void 0, false, {
                             fileName: "[project]/components/booking/step-payment.tsx",
-                            lineNumber: 305,
+                            lineNumber: 302,
                             columnNumber: 13
                         }, this),
                         "Processing Payment..."
@@ -2302,7 +2299,7 @@ function StepPayment() {
                             className: "h-5 w-5 animate-spin"
                         }, void 0, false, {
                             fileName: "[project]/components/booking/step-payment.tsx",
-                            lineNumber: 310,
+                            lineNumber: 307,
                             columnNumber: 13
                         }, this),
                         "Loading Payment System..."
@@ -2313,7 +2310,7 @@ function StepPayment() {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/components/booking/step-payment.tsx",
-                            lineNumber: 315,
+                            lineNumber: 312,
                             columnNumber: 13
                         }, this),
                         "Pay ",
@@ -2323,7 +2320,7 @@ function StepPayment() {
                 }, void 0, true)
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 298,
+                lineNumber: 295,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2331,7 +2328,7 @@ function StepPayment() {
                 children: "By proceeding, you agree to our terms of service and refund policy."
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 321,
+                lineNumber: 318,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$15$2e$5$2e$12_react$2d$dom$40$19$2e$2$2e$4_react$40$19$2e$2$2e$4_$5f$react$40$19$2e$2$2e$4$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2345,25 +2342,25 @@ function StepPayment() {
                             className: "h-4 w-4"
                         }, void 0, false, {
                             fileName: "[project]/components/booking/step-payment.tsx",
-                            lineNumber: 332,
+                            lineNumber: 329,
                             columnNumber: 11
                         }, this),
                         "Back to Review"
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/booking/step-payment.tsx",
-                    lineNumber: 327,
+                    lineNumber: 324,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/booking/step-payment.tsx",
-                lineNumber: 326,
+                lineNumber: 323,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/booking/step-payment.tsx",
-        lineNumber: 221,
+        lineNumber: 218,
         columnNumber: 5
     }, this);
 }

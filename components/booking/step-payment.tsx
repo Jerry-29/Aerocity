@@ -87,11 +87,8 @@ export function StepPayment() {
       }
 
       const booking = bookingResponse.data;
-      setBookingReference(booking.bookingReference);
-      setBookingTotalAmount(Number(booking.totalAmount));
-      console.log("✅ Booking created:", booking.bookingReference);
-      console.log("💰 Total Amount from booking:", booking.totalAmount);
-      console.log("💰 Razorpay Order ID:", booking.razorpayOrderId);
+      setBookingReference((booking as any).bookingReference);
+      setBookingTotalAmount(Number((booking as any).totalAmount));
 
       // Step 2: Initialize Razorpay payment
       if (!window.Razorpay) {
@@ -102,11 +99,11 @@ export function StepPayment() {
         key:
           process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
           process.env.RAZORPAY_KEY_ID,
-        order_id: booking.razorpayOrderId,
-        amount: Math.round(Number(booking.totalAmount) * 100), // Convert to paise
+        order_id: (booking as any).razorpayOrderId,
+        amount: Math.round(Number((booking as any).totalAmount) * 100), // Convert to paise
         currency: "INR",
         name: "Aerocity",
-        description: `Booking ${booking.bookingReference}`,
+        description: `Booking ${(booking as any).bookingReference}`,
         prefill: {
           name: formData.customerName,
           email: formData.customerEmail || "",
@@ -115,8 +112,8 @@ export function StepPayment() {
         handler: async (response: RazorpayResponse) => {
           await handlePaymentSuccess(
             response,
-            booking.bookingReference,
-            Number(booking.totalAmount),
+            (booking as any).bookingReference,
+            Number((booking as any).totalAmount),
           );
         },
         modal: {
@@ -129,7 +126,7 @@ export function StepPayment() {
       });
 
       console.log("🎯 Opening Razorpay payment modal...");
-      setRazorpayOrderId(booking.razorpayOrderId);
+      setRazorpayOrderId((booking as any).razorpayOrderId);
       razorpay.open();
     } catch (error: any) {
       console.error("❌ Payment error:", error);

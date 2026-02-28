@@ -235,7 +235,7 @@ export default function AdminBookingDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {booking.items.map((item) => (
+                  {booking.items.map((item: any) => (
                     <tr key={item.ticketCategoryId} className="border-b last:border-0">
                       <td className="px-4 py-3 font-medium text-foreground">
                         {item.ticketName}

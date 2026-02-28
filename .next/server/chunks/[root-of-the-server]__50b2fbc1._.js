@@ -893,7 +893,7 @@ async function POST(request) {
         const body = await request.json();
         const validation = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$validators$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["validateAnnouncementRequest"])(body);
         if (!validation.valid) {
-            throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"](validation.message, validation.field);
+            throw new __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$errors$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ValidationError"](validation.message || "Invalid announcement data", validation.field || undefined);
         }
         const { title, content, message, type, isActive, priority, validFrom, validTo, audience } = body;
         const announcement = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].announcement.create({

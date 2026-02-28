@@ -300,30 +300,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {process.env.NEXT_PUBLIC_BYPASS_AUTH === "true" && (
-            <div className="mb-4 rounded-lg bg-blue-50 p-3">
-              <p className="mb-2 text-xs font-medium text-blue-700">🧪 Test Mode - Quick Login:</p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleTestLogin("admin")}
-                  disabled={isLoading}
-                  className="flex-1 rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? "..." : "Test Admin"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTestLogin("agent")}
-                  disabled={isLoading}
-                  className="flex-1 rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? "..." : "Test Agent"}
-                </button>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {tab === "admin" ? (
               <div>

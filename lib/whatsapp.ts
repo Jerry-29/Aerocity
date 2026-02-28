@@ -97,12 +97,67 @@ export async function sendWhatsAppMessage(input: SendWhatsAppMessageInput) {
   });
 
   const data = await response.json();
-  console.log("WhatsApp API response:", data,payload,response);
+  console.log("WhatsApp API response:", data, payload, response);
   if (!response.ok) {
+    const err: any = data?.error;
+    if (err?.code === 131030) {
+      console.warn(
+        "WhatsApp test recipient not allowed. Add the number to the allowed list or get opt-in. Skipping notification.",
+      );
+      return {
+        skipped: true,
+        reason: "recipient_not_allowed",
+        message:
+          "Recipient phone number not in allowed list for WhatsApp sandbox. Notification skipped.",
+      };
+    }
     throw new Error(
       `WhatsApp API error ${response.status}: ${JSON.stringify(data)}`,
     );
   }
 
+  return data;
+}
+
+export async function sendWhatsAppText(toPhone: string, body: string) {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!phoneNumberId || !token) {
+    throw new Error("Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_TOKEN");
+  }
+  const endpoint = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+  const to = "91" + toPhone.replace(/\D/g, "");
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "text",
+    text: { body },
+  };
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const err: any = data?.error;
+    if (err?.code === 131030) {
+      console.warn(
+        "WhatsApp test recipient not allowed. Add the number to the allowed list or get opt-in. Skipping text.",
+      );
+      return {
+        skipped: true,
+        reason: "recipient_not_allowed",
+        message:
+          "Recipient phone number not in allowed list for WhatsApp sandbox. Notification skipped.",
+      };
+    }
+    throw new Error(
+      `WhatsApp API error ${response.status}: ${JSON.stringify(data)}`,
+    );
+  }
   return data;
 }

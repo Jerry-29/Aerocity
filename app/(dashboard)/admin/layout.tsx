@@ -24,6 +24,7 @@ const adminLinks: SidebarLink[] = [
   { label: "Agents", href: "/admin/agents", icon: Users },
   { label: "Media Gallery", href: "/admin/media", icon: Image },
   { label: "Testimonials", href: "/admin/testimonials", icon: MessageSquare },
+  { label: "Contact Queries", href: "/admin/contacts", icon: MessageSquare },
   { label: "Announcements", href: "/admin/announcements", icon: Megaphone },
   { label: "Validate Entry", href: "/admin/validate", icon: QrCode },
 ];
