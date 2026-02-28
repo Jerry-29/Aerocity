@@ -1,8 +1,9 @@
 // prisma/seed.ts - Database seeding script
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
 import bcrypt from "bcryptjs";
 import Decimal from "decimal.js";
 
+const { PrismaClient } = pkg as any;
 const prisma = new PrismaClient();
 
 async function main() {
