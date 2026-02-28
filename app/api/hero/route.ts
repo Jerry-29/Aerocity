@@ -1,5 +1,5 @@
 // app/api/hero/route.ts - Public hero media (image or video)
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { prisma } from "@/lib/db";
 

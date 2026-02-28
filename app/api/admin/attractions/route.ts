@@ -1,5 +1,5 @@
 // app/api/admin/attractions/route.ts - Admin attractions management (list and create)
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateAttractionRequest } from "@/lib/validators";
@@ -69,16 +69,18 @@ export async function POST(request: NextRequest) {
 
     const validation = validateAttractionRequest(body);
     if (!validation.valid) {
-      throw new ValidationError(validation.message, validation.field);
+      throw new ValidationError(validation.message || "Invalid attraction data", validation.field);
     }
 
-    const { title, description, imageUrl, displayOrder } = body;
+    const { name, slug, description, imageUrl, displayOrder, category } = body;
 
     const attraction = await prisma.attraction.create({
       data: {
-        title,
+        name,
+        slug,
         description,
         imageUrl,
+        category: category || "general",
         displayOrder: displayOrder || 1,
       },
     });

@@ -1,5 +1,5 @@
 // app/api/admin/offers/route.ts - Admin offer management
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateOfferRequest } from "@/lib/validators";

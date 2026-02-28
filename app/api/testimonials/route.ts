@@ -1,5 +1,5 @@
 // app/api/testimonials/route.ts - Public testimonials
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { validateTestimonialRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";

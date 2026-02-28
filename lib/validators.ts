@@ -263,6 +263,8 @@ export function validateTestimonialRequest(data: any): ValidationResult {
   return { valid: true };
 }
 
+ 
+
 /**
  * Validate announcement request
  */
@@ -290,18 +292,15 @@ export function validateAnnouncementRequest(data: any): ValidationResult {
  * Validate attraction request
  */
 export function validateAttractionRequest(data: any): ValidationResult {
-  if (!data.title || data.title.trim().length === 0) {
-    return { valid: false, message: "title is required", field: "title" };
+  if (!data.name || data.name.trim().length === 0) {
+    return { valid: false, message: "name is required", field: "name" };
   }
-
+  if (!data.slug || data.slug.trim().length === 0) {
+    return { valid: false, message: "slug is required", field: "slug" };
+  }
   if (!data.description || data.description.trim().length === 0) {
     return { valid: false, message: "description is required", field: "description" };
   }
-
-  if (!data.imageUrl || data.imageUrl.trim().length === 0) {
-    return { valid: false, message: "imageUrl is required", field: "imageUrl" };
-  }
-
   return { valid: true };
 }
 

@@ -1,5 +1,5 @@
 // app/api/media/route.ts - Public media listing
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 

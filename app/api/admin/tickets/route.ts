@@ -1,5 +1,5 @@
 // app/api/admin/tickets/route.ts - Admin ticket management
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateTicketRequest } from "@/lib/validators";

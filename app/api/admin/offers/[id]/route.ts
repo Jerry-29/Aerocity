@@ -1,5 +1,5 @@
 // app/api/admin/offers/[id]/route.ts - Get, update, delete offer
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
@@ -11,19 +11,27 @@ function embedPercent(desc: string | null | undefined, percentage?: number) {
   return `${base} [PERCENT:${percentage}]`.trim();
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+function parseIdFromUrl(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const last = segs[segs.length - 1];
+    return parseInt(last, 10);
+  } catch {
+    return NaN;
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can access this resource");
     }
 
-    const offerId = parseInt(params.id, 10);
+    const offerId = parseIdFromUrl(request);
     if (isNaN(offerId)) {
       throw new NotFoundError("Invalid offer ID");
     }
@@ -69,19 +77,16 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PUT(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can update offers");
     }
 
-    const offerId = parseInt(params.id, 10);
+    const offerId = parseIdFromUrl(request);
     if (isNaN(offerId)) {
       throw new NotFoundError("Invalid offer ID");
     }
@@ -94,7 +99,7 @@ export async function PUT(
       throw new NotFoundError("Offer not found");
     }
 
-    const body = await request.json();
+    const body = await (request as any).json();
 
     if (body.isActive === true) {
       const existingActive = await prisma.offer.findFirst({
@@ -208,19 +213,16 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can delete offers");
     }
 
-    const offerId = parseInt(params.id, 10);
+    const offerId = parseIdFromUrl(request);
     if (isNaN(offerId)) {
       throw new NotFoundError("Invalid offer ID");
     }

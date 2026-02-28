@@ -1,23 +1,23 @@
 // app/api/tickets/[id]/route.ts - Get single ticket
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { NotFoundError } from "@/lib/errors";
 import { extractTokenFromHeader, verifyToken } from "@/lib/jwt-utils";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(request: Request) {
   try {
-    const ticketId = parseInt(params.id, 10);
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const last = segs[segs.length - 1];
+    const ticketId = parseInt(last, 10);
 
     if (isNaN(ticketId)) {
       throw new NotFoundError("Invalid ticket ID");
     }
 
     // Check if user is authenticated (optional - for agent pricing)
-    const authHeader = request.headers.get("Authorization");
+    const authHeader = (request as any).headers.get("Authorization");
     const token = extractTokenFromHeader(authHeader ?? undefined);
     let userRole: string | null = null;
 

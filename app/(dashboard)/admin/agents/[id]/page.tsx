@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   User,
@@ -155,6 +155,7 @@ export default function AdminAgentDetailPage() {
   }
 
   return (
+    !agent ? null : (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
@@ -312,5 +313,6 @@ export default function AdminAgentDetailPage() {
         loading={updatingStatus}
       />
     </div>
+    )
   );
 }

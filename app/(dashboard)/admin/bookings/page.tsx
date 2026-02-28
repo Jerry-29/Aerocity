@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import { Search, Download } from "lucide-react";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { DataTablePagination } from "@/components/dashboard/data-table-pagination";

@@ -1,5 +1,5 @@
 // app/api/offers/route.ts - Public offers (active within date window)
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 

@@ -1,17 +1,17 @@
-import { NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { generateTicketPDF } from "@/lib/generate-ticket-pdf";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { reference: string } },
-) {
-  const { auth, error } = await withAuth(request);
+export async function GET(request: Request) {
+  const { auth, error } = await withAuth(request as any);
   if (error) return error;
 
+  const { pathname } = new URL(request.url);
+  const segs = pathname.split("/").filter(Boolean);
+  const reference = segs[segs.length - 1];
   const booking = await prisma.booking.findUnique({
-    where: { bookingReference: params.reference },
+    where: { bookingReference: reference },
     include: {
       bookingItems: {
         include: {
@@ -24,11 +24,11 @@ export async function GET(
   });
 
   if (!booking) {
-    return new Response("Booking not found", { status: 404 });
+    return NextResponse.json("Booking not found" as any, { status: 404 });
   }
 
   if (auth?.role === "AGENT" && booking.agentId !== auth.userId) {
-    return new Response("Forbidden", { status: 403 });
+    return NextResponse.json("Forbidden" as any, { status: 403 });
   }
 
   const pdfBuffer = await generateTicketPDF({
@@ -45,7 +45,7 @@ export async function GET(
     })),
   });
 
-  return new Response(pdfBuffer, {
+  return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

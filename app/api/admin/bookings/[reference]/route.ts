@@ -1,24 +1,24 @@
 // app/api/admin/bookings/[reference]/route.ts - Get booking details
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { reference: string } },
-) {
+export async function GET(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can access this");
     }
 
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const reference = segs[segs.length - 1];
     const booking = await prisma.booking.findUnique({
-      where: { bookingReference: params.reference },
+      where: { bookingReference: reference },
       include: {
         bookingItems: {
           include: { ticket: true },

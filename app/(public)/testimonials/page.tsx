@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import Image from "next/image";
+import type { Metadata } from 'next';
+import Image from 'next/image';
 import { TestimonialsListLoader } from "@/components/testimonials/testimonials-loader";
 
 export const metadata: Metadata = {

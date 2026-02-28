@@ -1,24 +1,24 @@
 // app/api/admin/bookings/[reference]/validate/route.ts - Validate booking at gate
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { reference: string } },
-) {
+export async function PUT(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can validate bookings");
     }
 
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const reference = segs[segs.length - 2]; // .../bookings/[reference]/validate
     const booking = await prisma.booking.findUnique({
-      where: { bookingReference: params.reference },
+      where: { bookingReference: reference },
     });
 
     if (!booking) {

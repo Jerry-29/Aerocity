@@ -1,15 +1,14 @@
 // app/api/bookings/[reference]/route.ts - Get booking by reference
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { getBookingByReference } from "@/lib/booking-service";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { NotFoundError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ reference: string }> },
-) {
+export async function GET(request: Request) {
   try {
-    const { reference } = await context.params;
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const reference = segs[segs.length - 1];
     const booking = await getBookingByReference(reference);
 
     return NextResponse.json(

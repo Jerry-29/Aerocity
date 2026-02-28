@@ -17,20 +17,7 @@ export function generateReceiptId(): string {
 export async function createRazorpayOrder(
   amount: number,
   receipt?: string,
-): Promise<{
-  id: string;
-  entity: string;
-  amount: number;
-  amount_paid: number;
-  amount_due: number;
-  currency: string;
-  receipt: string;
-  offer_id: string | null;
-  status: string;
-  attempts: number;
-  notes: Record<string, any>;
-  created_at: number;
-}> {
+): Promise<any> {
   try {
     const RazorpayAPI = await import("razorpay");
     const razorpay = new RazorpayAPI.default({

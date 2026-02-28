@@ -1,23 +1,31 @@
 // app/api/admin/announcements/[id]/route.ts - Admin announcement details, update, delete
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+function parseIdFromUrl(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const last = segs[segs.length - 1];
+    return parseInt(last, 10);
+  } catch {
+    return NaN;
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can access this");
     }
 
-    const announcementId = parseInt(params.id, 10);
+    const announcementId = parseIdFromUrl(request);
     if (isNaN(announcementId)) {
       throw new NotFoundError("Invalid announcement ID");
     }
@@ -58,19 +66,16 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PUT(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can update announcements");
     }
 
-    const announcementId = parseInt(params.id, 10);
+    const announcementId = parseIdFromUrl(request);
     if (isNaN(announcementId)) {
       throw new NotFoundError("Invalid announcement ID");
     }
@@ -83,7 +88,7 @@ export async function PUT(
       throw new NotFoundError("Announcement not found");
     }
 
-    const body = await request.json();
+    const body = await (request as any).json();
     const { title, content, message, type, isActive, priority, validFrom, validTo, audience } = body;
 
     const updated = await prisma.announcement.update({
@@ -141,19 +146,16 @@ function embedMeta(content: string, meta: any) {
   return out.trim();
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can delete announcements");
     }
 
-    const announcementId = parseInt(params.id, 10);
+    const announcementId = parseIdFromUrl(request);
     if (isNaN(announcementId)) {
       throw new NotFoundError("Invalid announcement ID");
     }

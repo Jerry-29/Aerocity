@@ -1,5 +1,7 @@
 // app/api/announcements/route.ts - Public announcements (active only)
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
 import { prisma } from "@/lib/db";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 

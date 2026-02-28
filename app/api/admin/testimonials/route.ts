@@ -1,5 +1,5 @@
 // app/api/admin/testimonials/route.ts - Admin testimonials management
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createPaginatedResponse, createErrorResponse } from "@/lib/responses";

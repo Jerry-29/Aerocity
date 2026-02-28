@@ -1,25 +1,25 @@
 // app/api/admin/bookings/[reference]/refund/route.ts - Process refund
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { refundPayment } from "@/lib/razorpay-utils";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { reference: string } },
-) {
+export async function POST(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can process refunds");
     }
 
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const reference = segs[segs.length - 2]; // .../bookings/[reference]/refund
     const booking = await prisma.booking.findUnique({
-      where: { bookingReference: params.reference },
+      where: { bookingReference: reference },
     });
 
     if (!booking) {
@@ -35,11 +35,12 @@ export async function POST(
     }
 
     // Check if already refunded
-    if (booking.paymentStatus === "REFUNDED") {
+// app/api/admin/bookings/[reference]/refund/route.ts
+    if (booking.paymentStatus === "REFUNDED" as any) {
       throw new ValidationError("Booking is already refunded", "paymentStatus");
     }
 
-    const body = await request.json();
+    const body = await (request as any).json();
     const { amount, reason } = body;
 
     if (!reason || reason.trim().length === 0) {

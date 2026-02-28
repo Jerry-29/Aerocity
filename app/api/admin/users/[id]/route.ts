@@ -1,24 +1,32 @@
 // app/api/admin/users/[id]/route.ts - User details and status update
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateUserStatusUpdateRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+function parseIdFromUrl(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const last = segs[segs.length - 1];
+    return parseInt(last, 10);
+  } catch {
+    return NaN;
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can access this");
     }
 
-    const userId = parseInt(params.id, 10);
+    const userId = parseIdFromUrl(request);
     if (isNaN(userId)) {
       throw new NotFoundError("Invalid user ID");
     }
@@ -69,19 +77,16 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function PUT(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can update users");
     }
 
-    const userId = parseInt(params.id, 10);
+    const userId = parseIdFromUrl(request);
     if (isNaN(userId)) {
       throw new NotFoundError("Invalid user ID");
     }
@@ -94,11 +99,11 @@ export async function PUT(
       throw new NotFoundError("User not found");
     }
 
-    const body = await request.json();
+    const body = await (request as any).json();
 
     const validation = validateUserStatusUpdateRequest(body);
     if (!validation.valid) {
-      throw new ValidationError(validation.message, validation.field);
+      throw new ValidationError(validation?.message || "Invalid input", validation.field);
     }
 
     const { name, email, mobile, status } = body;

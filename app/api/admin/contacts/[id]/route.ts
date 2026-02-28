@@ -1,26 +1,34 @@
 // app/api/admin/contacts/[id]/route.ts - Update contact query status/notes
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 import { updateContactMessage, removeContactMessage } from "@/lib/contact-fallback";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+function parseIdFromUrl(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { pathname } = new URL(request.url);
+    const segs = pathname.split("/").filter(Boolean);
+    const last = segs[segs.length - 1];
+    return parseInt(last, 10);
+  } catch {
+    return NaN;
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can update contact queries");
     }
-    const id = parseInt(params.id, 10);
+    const id = parseIdFromUrl(request);
     if (isNaN(id)) {
       throw new NotFoundError("Invalid contact ID");
     }
-    const body = await request.json();
+    const body = await (request as any).json();
     const { status, notes } = body || {};
 
     const hasModel =
@@ -74,17 +82,14 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(request: Request) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can delete contact queries");
     }
-    const id = parseInt(params.id, 10);
+    const id = parseIdFromUrl(request);
     if (isNaN(id)) {
       throw new NotFoundError("Invalid contact ID");
     }
