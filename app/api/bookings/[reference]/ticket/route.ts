@@ -37,7 +37,12 @@ export async function GET(request: Request) {
     customerMobile: booking.customerMobile,
     visitDate: booking.visitDate,
     totalAmount: booking.totalAmount.toString(),
-    tickets: booking.bookingItems.map((item) => ({
+    tickets: booking.bookingItems.map((item: {
+      ticket: { name: string };
+      quantity: number;
+      appliedPrice: any;
+      totalPrice: any;
+    }) => ({
       name: item.ticket.name,
       quantity: item.quantity,
       unitPrice: Number(item.appliedPrice),
