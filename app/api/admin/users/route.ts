@@ -24,17 +24,17 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get("role") || "AGENT";
     const isActive = searchParams.get("isActive");
 
-    const where: any = {
+    const where = {
       role: role.toUpperCase(),
     };
 
     if (isActive !== null) {
-      where.status = isActive === "true" ? "ACTIVE" : { not: "ACTIVE" };
+      (where as any).status = isActive === "true" ? "ACTIVE" : { not: "ACTIVE" };
     }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where,
+        where: where as any,
         select: {
           id: true,
           name: true,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.user.count({ where }),
+      prisma.user.count({ where: where as any }),
     ]);
 
     const userIds = users.map((u) => u.id);
