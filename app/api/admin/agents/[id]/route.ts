@@ -1,22 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { withAuth } from "@/lib/auth-middleware";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(request: Request, context: any) {
   try {
-    const { auth, error } = await withAuth(request);
+    const { auth, error } = await withAuth(request as any);
     if (error) return error;
 
     if (auth?.role !== "ADMIN") {
       throw new ForbiddenError("Only admins can access this");
     }
 
-    const agentId = parseInt(params.id, 10);
+    const agentId = parseInt(context?.params?.id, 10);
     if (isNaN(agentId)) {
       throw new NotFoundError("Invalid agent ID");
     }

@@ -126,7 +126,7 @@ export interface AdminMedia {
   type: "IMAGE" | "VIDEO";
   url: string;
   thumbnailUrl: string;
-  category: "GALLERY" | "ATTRACTION" | "GENERAL";
+  category: "GALLERY" | "ATTRACTION" | "GENERAL" | "HERO";
   isPublic: boolean;
   uploadedBy: number;
   createdAt: string;

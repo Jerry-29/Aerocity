@@ -1,3 +1,0 @@
-{
-  "/api/bookings/[reference]/ticket/route": "app/api/bookings/[reference]/ticket/route.js"
-}

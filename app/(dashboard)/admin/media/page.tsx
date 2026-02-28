@@ -293,7 +293,7 @@ export default function AdminMediaPage() {
               <div className="flex items-center justify-between px-3 py-2">
                 <StatusBadge status={m.category} />
                 <div className="flex items-center gap-2">
-                  {m.category === "HERO" && m.id === heroId && (
+                  {m?.category === "HERO" && m.id === heroId && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-secondary/20 px-2 py-0.5 text-[10px] font-semibold text-secondary">
                       <Star className="h-3 w-3" /> HERO
                     </span>

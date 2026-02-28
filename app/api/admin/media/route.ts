@@ -6,33 +6,6 @@ import { createPaginatedResponse, createErrorResponse, createSuccessResponse } f
 import path from "path";
 import fs from "fs/promises";
 
-async function generateImageThumbnailIfPossible(
-  fullPath: string,
-  relUrl: string,
-): Promise<string | null> {
-  try {
-    // Try to lazy-import sharp if installed; otherwise silently skip
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const sharp = (await import("sharp")).default as any;
-    const parsed = path.parse(fullPath);
-    const thumbsDir = path.join(parsed.dir, "thumbs");
-    await fs.mkdir(thumbsDir, { recursive: true });
-    const outName = `${parsed.name}_thumb.webp`;
-    const outPath = path.join(thumbsDir, outName);
-    await sharp(fullPath)
-      .resize({ width: 960 })
-      .webp({ quality: 70 })
-      .toFile(outPath);
-    const publicRoot = path.join(process.cwd(), "public");
-    const relThumb = outPath.split(publicRoot)[1].replace(/\\/g, "/");
-    const url = relThumb.startsWith("/") ? relThumb : `/${relThumb}`;
-    return url;
-  } catch {
-    // sharp not available or failed; fallback to original
-    return null;
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { auth, error } = await withAuth(request);
@@ -122,10 +95,8 @@ export async function POST(request: NextRequest) {
     const relPath = fullPath.split(path.join(process.cwd(), "public"))[1].replace(/\\/g, "/");
     const url = relPath.startsWith("/") ? relPath : `/${relPath}`;
 
-    let thumbUrl: string | null = null;
-    if (type === "IMAGE") {
-      thumbUrl = await generateImageThumbnailIfPossible(fullPath, url);
-    }
+    // Thumbnail generation temporarily disabled to avoid optional dependency issues (sharp)
+    const thumbUrl: string | null = null;
 
     if (category === "HERO") {
       try {
@@ -174,7 +145,7 @@ export async function POST(request: NextRequest) {
         url,
         thumbnailUrl: thumbUrl || url,
         isPublic: category === "HERO" ? shouldBeActive : true,
-        uploadedBy: String(auth?.userId || auth?.email || "admin"),
+        uploadedBy: String(auth?.userId || "admin"),
       },
     });
 

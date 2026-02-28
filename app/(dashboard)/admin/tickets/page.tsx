@@ -269,9 +269,8 @@ export default function AdminTicketsPage() {
                   onClick={() => {
                     setEditing(t);
                     setForm({
-                      basePrice: t.basePrice,
-                      offerPrice: t.offerPrice ?? 0,
-                      agentPrice: t.agentPrice,
+                      basePrice: String(t.basePrice ?? ""),
+                      agentPrice: String(t.agentPrice ?? "")
                     });
                   }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
