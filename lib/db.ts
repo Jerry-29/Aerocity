@@ -1,7 +1,8 @@
-// lib/db.ts - Prisma client singleton
-import { PrismaClient } from "@prisma/client";
+import pkg from "@prisma/client";
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const { PrismaClient } = pkg as any;
+
+const globalForPrisma = global as unknown as { prisma: any };
 
 export const prisma =
   globalForPrisma.prisma ||
