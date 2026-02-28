@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const { bookingReference, razorpayOrderId, razorpayPaymentId, razorpaySignature, amount } = body;
 
     // Use database transaction for atomic payment processing
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Find booking and lock it (FOR UPDATE equivalent in Prisma)
       const booking = await tx.booking.findUnique({
         where: { bookingReference },
@@ -148,7 +148,12 @@ export async function POST(request: NextRequest) {
             customerMobile: booking.customerMobile,
             visitDate: booking.visitDate,
             totalAmount: booking.totalAmount.toString(),
-            tickets: booking.bookingItems.map((item) => ({
+            tickets: booking.bookingItems.map((item: {
+              ticket: { name: string };
+              quantity: number;
+              appliedPrice: any;
+              totalPrice: any;
+            }) => ({
               name: item.ticket.name,
               quantity: item.quantity,
               unitPrice: Number(item.appliedPrice),
@@ -166,10 +171,7 @@ export async function POST(request: NextRequest) {
           name: booking.customerName,
           bookingId: booking.bookingReference,
           date: new Date(booking.visitDate).toISOString().split("T")[0],
-          ticketsCount: booking.bookingItems.reduce(
-            (sum, item) => sum + item.quantity,
-            0,
-          ),
+          ticketsCount: booking.bookingItems.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
           ticketUrl,
         });
       } catch (notificationError) {

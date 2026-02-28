@@ -36,14 +36,14 @@ export async function GET(request: NextRequest) {
     });
 
     // Format response based on user role
-    const formattedTickets = tickets.map((ticket: any) => ({
+    const formattedTickets = tickets.map((ticket:any) => ({
       id: ticket.id,
       name: ticket.name,
       slug: ticket.slug,
       description: ticket.description,
-      price: userRole === "AGENT" ? ticket.agentPrice : ticket.customerPrice,
-      customerPrice: ticket.customerPrice,
-      agentPrice: ticket.agentPrice,
+      price: userRole === "AGENT" ? Number(ticket.agentPrice) : Number(ticket.customerPrice),
+      customerPrice: Number(ticket.customerPrice),
+      agentPrice: Number(ticket.agentPrice),
       heightRequirement: ticket.heightRequirement,
       isActive: ticket.isActive,
       createdAt: ticket.createdAt,

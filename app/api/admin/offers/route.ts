@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           ? {}
           : {
               offerPrices: {
-                create: (offerPrices || []).map((price: any) => ({
+                create: (offerPrices || []).map((price: { ticketId: number; offerPrice: number }) => ({
                   ticketId: price.ticketId,
                   offerPrice: price.offerPrice,
                 })),

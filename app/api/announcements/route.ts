@@ -26,24 +26,30 @@ export async function GET(request: NextRequest) {
     };
 
     const filtered = raw
-      .map((a: any) => {
+      .map((a: {
+        id: number;
+        content: string | null;
+        createdAt: any;
+      }) => {
         const meta = parseMeta(a.content || "");
         return { ...a, __meta: meta };
       })
-      .filter((a: any) => {
+      .filter((a: {
+        __meta: { validFrom: string | null; validTo: string | null; audience: string };
+      }) => {
         const { validFrom, validTo, audience } = a.__meta;
         if (audience !== "PUBLIC") return false;
         if (validFrom && now < validFrom) return false;
         if (validTo && now > validTo) return false;
         return true;
       })
-      .sort((a: any, b: any) => {
+      .sort((a: { __meta: { priority?: number }; createdAt: any }, b: { __meta: { priority?: number }; createdAt: any }) => {
         const pa = a.__meta.priority || 0;
         const pb = b.__meta.priority || 0;
         if (pb !== pa) return pb - pa;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       })
-      .map((a: any) => {
+      .map((a: { content: string | null }) => {
         return {
           ...a,
           content: (a.content || "").replace(/\s*\[(PRIORITY|VALID|AUDIENCE):[^\]]+\]\s*/gi, "").trim(),

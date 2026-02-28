@@ -44,7 +44,15 @@ export async function GET(request: Request) {
       customerMobile: booking.customerMobile,
       customerEmail: booking.customerEmail,
       totalAmount: booking.totalAmount,
-      items: booking.bookingItems.map((item: any) => ({
+      items: booking.bookingItems.map((item: {
+        ticketId: number;
+        ticket: { name: string };
+        quantity: number;
+        basePrice: any;
+        appliedPrice: any;
+        isOfferApplied: boolean;
+        totalPrice: any;
+      }) => ({
         ticketId: item.ticketId,
         ticketName: item.ticket.name,
         quantity: item.quantity,

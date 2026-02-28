@@ -97,7 +97,34 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const formattedBookings = bookings.map((booking: any) => ({
+    const formattedBookings = bookings.map((booking: {
+      id: number;
+      bookingReference: string;
+      visitDate: Date | string;
+      bookedByRole: string;
+      agentId: number | null;
+      customerName: string;
+      customerMobile: string;
+      customerEmail: string | null;
+      totalAmount: any;
+      bookingItems: Array<{
+        ticketId: number;
+        ticket: { name: string };
+        quantity: number;
+        basePrice: any;
+        appliedPrice: any;
+        isOfferApplied: boolean;
+        totalPrice: any;
+      }>;
+      paymentStatus: string;
+      razorpayOrderId: string | null;
+      razorpayPaymentId: string | null;
+      isValidated: boolean;
+      validatedAt: Date | string | null;
+      offer: { id: number; name: string } | null;
+      agent: { id: number; name: string; role: string } | null;
+      createdAt: Date | string;
+    }) => ({
       id: booking.id,
       bookingReference: booking.bookingReference,
       visitDate: booking.visitDate,
@@ -107,7 +134,15 @@ export async function GET(request: NextRequest) {
       customerMobile: booking.customerMobile,
       customerEmail: booking.customerEmail,
       totalAmount: booking.totalAmount,
-      items: booking.bookingItems.map((item: any) => ({
+      items: booking.bookingItems.map((item: {
+        ticketId: number;
+        ticket: { name: string };
+        quantity: number;
+        basePrice: any;
+        appliedPrice: any;
+        isOfferApplied: boolean;
+        totalPrice: any;
+      }) => ({
         ticketId: item.ticketId,
         ticketName: item.ticket.name,
         quantity: item.quantity,

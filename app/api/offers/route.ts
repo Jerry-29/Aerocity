@@ -24,11 +24,19 @@ export async function GET(request: NextRequest) {
       select: { id: true, customerPrice: true },
     });
 
-    const withComputed = offers.map((o: any) => {
+    const withComputed = offers.map((o) => {
       const match = (o.description || "").match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
-      if (!match) return o;
+      if (!match) {
+        return {
+          ...o,
+          offerPrices: (o.offerPrices || []).map((p: any) => ({
+            ticketId: p.ticketId,
+            offerPrice: Number(p.offerPrice),
+          })),
+        };
+      }
       const pct = parseFloat(match[1]);
-      const computed = tickets.map((t: any) => ({
+      const computed = tickets.map((t: { id: number; customerPrice: any }) => ({
         ticketId: t.id,
         offerPrice: Math.max(0, Number(t.customerPrice) * (1 - pct / 100)),
       }));

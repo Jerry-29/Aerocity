@@ -40,7 +40,15 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const formattedTickets = tickets.map((ticket: any) => ({
+    const formattedTickets = tickets.map((ticket: {
+      id: number;
+      name: string;
+      slug: string;
+      description: string | null;
+      customerPrice: any;
+      agentPrice: any;
+      isActive: boolean;
+    }) => ({
       id: ticket.id,
       name: ticket.name,
       slug: ticket.slug,

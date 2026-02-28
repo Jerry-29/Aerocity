@@ -11,7 +11,7 @@ export async function GET(_request: NextRequest) {
     const phones =
       (env.NEXT_PUBLIC_CONTACT_PHONES || "")
         .split(",")
-        .map((p) => p.trim())
+        .map((p: string) => p.trim())
         .filter(Boolean) || PARK_INFO.phone;
     const payload = {
       address: env.NEXT_PUBLIC_CONTACT_ADDRESS || PARK_INFO.address,

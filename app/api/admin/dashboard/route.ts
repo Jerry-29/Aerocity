@@ -59,14 +59,18 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get ticket details for top performers
-    const topTicketIds = ticketPerformance.map((tp: any) => tp.ticketId);
+    const topTicketIds = ticketPerformance.map((tp: { ticketId: number }) => tp.ticketId);
     const topTickets = await prisma.ticket.findMany({
       where: { id: { in: topTicketIds } },
       select: { id: true, name: true, customerPrice: true },
     });
 
-    const ticketPerformanceWithDetails = ticketPerformance.map((tp: any) => {
-      const ticket = topTickets.find((t: any) => t.id === tp.ticketId);
+    const ticketPerformanceWithDetails = ticketPerformance.map((tp: {
+      ticketId: number;
+      _sum: { quantity: number | null };
+      _count: { ticketId: number };
+    }) => {
+      const ticket = topTickets.find((t: { id: number; name: string; customerPrice: any }) => t.id === tp.ticketId);
       return {
         ticketId: tp.ticketId,
         ticketTitle: ticket?.name || "Unknown",
@@ -121,7 +125,7 @@ export async function GET(request: NextRequest) {
         pendingValidation,
         totalRevenue: totalRevenue._sum.totalAmount || 0,
       },
-      bookingsByStatus: bookingsByStatus.map((bs: any) => ({
+      bookingsByStatus: bookingsByStatus.map((bs: { paymentStatus: string; _count: { _all: number } }) => ({
         status: bs.paymentStatus,
         count: bs._count._all,
       })),
