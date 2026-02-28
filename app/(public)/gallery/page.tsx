@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     "Browse stunning photos of Aerocity Water Park - rides, events, food court, and more. See what awaits you!",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function GalleryPage() {
   const gallery = await fetchGallery();
 

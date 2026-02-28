@@ -11,6 +11,9 @@ import {
   fetchActiveOffer,
 } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function HomePage() {
   const [attractions, categories, offer] = await Promise.all([
     fetchAttractions(),

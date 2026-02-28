@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     "Explore 20+ thrilling water rides and attractions at Aerocity Water Park - from high-speed slides to relaxing lazy rivers.",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AttractionsPage() {
   const attractions = await fetchAttractions();
 
