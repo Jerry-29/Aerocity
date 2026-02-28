@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where: where as any }),
     ]);
 
-    const userIds = users.map((u) => u.id);
+    const userIds = users.map((u: { id: number }) => u.id);
 
     const bookingStats =
       userIds.length > 0
@@ -81,7 +81,16 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const usersWithStats = users.map((u) => {
+    const usersWithStats = users.map((u: {
+      id: number;
+      name: string;
+      email: string | null;
+      mobile: string;
+      role: string;
+      status: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }) => {
       const stats = statsMap.get(u.id) || { totalBookings: 0, totalRevenue: 0 };
       return {
         ...u,
