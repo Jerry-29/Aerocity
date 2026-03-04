@@ -147,7 +147,8 @@ export default function AgentBookingDetailPage() {
       bookingItems: booking.items.map((item) => ({
         ticketName: item.ticketName,
         quantity: item.quantity,
-        appliedPrice: item.appliedPrice,
+        unitPrice: item.appliedPrice,
+        appliedPrice: item.totalPrice,
       })),
     });
 

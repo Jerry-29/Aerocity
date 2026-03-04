@@ -172,10 +172,25 @@ export async function DELETE(request: Request) {
       throw new NotFoundError("Ticket not found");
     }
 
-    // Delete ticket (this will cascade to related offer prices if needed)
-    await prisma.ticket.delete({
-      where: { id: ticketId },
-    });
+    // If ticket is referenced by any booking items, do not hard-delete.
+    const inUse = await prisma.bookingItem.count({ where: { ticketId } });
+    if (inUse > 0) {
+      const deactivated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { isActive: false },
+      });
+      return NextResponse.json(
+        createSuccessResponse("Ticket has existing bookings; deactivated instead of deletion", {
+          id: ticketId,
+          status: "DEACTIVATED",
+          ticket: deactivated,
+        }),
+        { status: 200 },
+      );
+    }
+
+    // Safe to delete (OfferTicketPrice rows will cascade)
+    await prisma.ticket.delete({ where: { id: ticketId } });
 
     return NextResponse.json(
       createSuccessResponse("Ticket deleted successfully", { id: ticketId }),

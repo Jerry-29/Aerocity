@@ -52,7 +52,11 @@ const recentColumns: Column<AdminBooking>[] = [
   {
     key: "bookedByRole",
     label: "Type",
-    render: (row) => <StatusBadge status={row.bookedByRole} />,
+    render: (row: any) => {
+      const displayRole =
+        row?.agent?.role === "ADMIN" ? "ADMIN" : row.bookedByRole;
+      return <StatusBadge status={displayRole} />;
+    },
   },
 ];
 

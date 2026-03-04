@@ -49,7 +49,6 @@ const emptyForm = {
   startDate: "",
   endDate: "",
   prices: {} as Record<number, number>,
-  percentageEnabled: false,
   percentage: 0,
 };
 
@@ -132,21 +131,15 @@ export default function AdminOffersPage() {
 
   const openEdit = (offer: AdminOffer) => {
     setEditingId(offer.id);
-    const prices: Record<number, number> = {};
-    offer.prices.forEach((p) => {
-      prices[p.ticketCategoryId] = p.offerPrice;
-    });
     const desc = (offer as any).description || "";
     const m = desc.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
-    const percentageEnabled = !!m;
     const percentage = m ? parseFloat(m[1]) : 0;
     setForm({
       name: offer.name,
       startDate: offer.startDate,
       endDate: offer.endDate,
-      prices,
-      percentageEnabled,
       percentage,
+      prices: {},
     });
     setError("");
     setShowForm(true);
@@ -169,12 +162,6 @@ export default function AdminOffersPage() {
     setSaving(true);
     await new Promise((r) => setTimeout(r, 600));
 
-    const prices: OfferPrice[] = tickets.map((t) => ({
-      ticketCategoryId: t.id,
-      ticketName: t.name,
-      offerPrice: form.prices[t.id] || t.basePrice,
-    }));
-
     try {
       const payload: any = {
         name: form.name,
@@ -185,15 +172,8 @@ export default function AdminOffersPage() {
       if (!editingId) {
         payload.isActive = false;
       }
-      if (form.percentageEnabled) {
-        payload.percentageEnabled = true;
-        payload.percentage = Number(form.percentage);
-      } else {
-        payload.offerPrices = prices.map((p) => ({
-          ticketId: p.ticketCategoryId,
-          offerPrice: p.offerPrice,
-        }));
-      }
+      payload.percentageEnabled = true;
+      payload.percentage = Number(form.percentage);
 
       const response = editingId
         ? await apiPut(`/api/admin/offers/${editingId}`, payload)
@@ -411,71 +391,27 @@ export default function AdminOffersPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-sm font-medium text-foreground">
-                  Global Percentage Discount
-                </p>
-                <div className="flex items-center gap-3">
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Discount Percentage (%)
+                </label>
+                <div className="flex items-center gap-2">
                   <input
-                    type="checkbox"
-                    checked={(form as any).percentageEnabled}
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={(form as any).percentage}
                     onChange={(e) =>
-                      setForm((p) => ({ ...p, percentageEnabled: e.target.checked }))
+                      setForm((p) => ({ ...p, percentage: Number(e.target.value) }))
                     }
+                    className="w-28 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
                   />
-                  <span className="text-sm text-muted-foreground">
-                    Apply percentage to all tickets
+                  <span className="text-xs text-muted-foreground">
+                    Applied to all tickets for everyone
                   </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">%</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={(form as any).percentage}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, percentage: Number(e.target.value) }))
-                      }
-                      disabled={!(form as any).percentageEnabled}
-                      className="w-24 rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary disabled:opacity-50"
-                    />
-                  </div>
                 </div>
               </div>
 
-              <div>
-                <p className="mb-2 text-sm font-medium text-foreground">
-                  Offer Prices per Category
-                </p>
-                <div className="flex flex-col gap-2">
-                  {tickets.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
-                    >
-                      <span className="text-sm text-foreground">{t.name}</span>
-                      <div className="relative w-28">
-                        <IndianRupee className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                          type="number"
-                          min={0}
-                          value={form.prices[t.id] || 0}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              prices: {
-                                ...p.prices,
-                                [t.id]: Number(e.target.value),
-                              },
-                            }))
-                          }
-                          disabled={(form as any).percentageEnabled}
-                          className="w-full rounded-md border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary disabled:opacity-50"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div className="hidden" />
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-3">

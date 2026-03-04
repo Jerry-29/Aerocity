@@ -31,6 +31,7 @@ export async function generateTicketPDF(input: GenerateTicketPdfInput): Promise<
     bookingItems: input.tickets.map((item) => ({
       ticketName: item.name,
       quantity: item.quantity,
+      unitPrice: item.unitPrice.toFixed(2),
       appliedPrice: item.lineTotal.toFixed(2),
     })),
   });

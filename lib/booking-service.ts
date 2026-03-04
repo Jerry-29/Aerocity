@@ -16,7 +16,7 @@ export interface CreateBookingInput {
   customerMobile: string;
   customerEmail?: string;
   agentId?: number;
-  bookedByRole?: "CUSTOMER" | "AGENT";
+  bookedByRole?: "CUSTOMER" | "AGENT" | "ADMIN";
   paymentMethod?: "ONLINE" | "OFFLINE";
 }
 
@@ -69,9 +69,21 @@ function getBestPrice(
   let isOfferApplied = false;
   let offerId: number | undefined;
 
-  // Find the lowest price across all active offers
   for (const offer of offers) {
-    for (const offerPrice of offer.offerPrices) {
+    const desc = String(offer?.description || "");
+    const m = desc.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+    if (m) {
+      const pct = parseFloat(m[1]);
+      const base = new Decimal(isAgent ? agentPrice : customerPrice);
+      const candidate = base.mul(new Decimal(1).minus(new Decimal(pct).div(100)));
+      if (candidate.lessThan(bestPrice)) {
+        bestPrice = candidate;
+        isOfferApplied = true;
+        offerId = offer.id;
+      }
+      continue;
+    }
+    for (const offerPrice of offer.offerPrices || []) {
       if (offerPrice.ticketId === ticketId) {
         const candidate = new Decimal(offerPrice.offerPrice);
         if (candidate.lessThan(bestPrice)) {
@@ -113,16 +125,16 @@ export async function createBooking(input: CreateBookingInput) {
     throw new NotFoundError("One or more tickets not found or inactive");
   }
 
-  // Check if agent exists (if bookedByRole is AGENT)
+  // Check if agent/admin exists
   let agentId: number | null = null;
-  let isAgent = input.bookedByRole === "AGENT";
+  let isAgentOrAdmin = input.bookedByRole === "AGENT" || input.bookedByRole === "ADMIN";
 
-  if (isAgent && input.agentId) {
-    const agent = await prisma.user.findUnique({
+  if (isAgentOrAdmin && input.agentId) {
+    const user = await prisma.user.findUnique({
       where: { id: input.agentId },
     });
-    if (!agent) {
-      throw new NotFoundError("Agent not found");
+    if (!user) {
+      throw new NotFoundError("User not found");
     }
     agentId = input.agentId;
   }
@@ -145,7 +157,7 @@ export async function createBooking(input: CreateBookingInput) {
       ticket.customerPrice as any,
       ticket.agentPrice as any,
       activeOffers,
-      isAgent,
+      isAgentOrAdmin,
     );
 
     const itemTotal = appliedPrice.times(item.quantity);
@@ -154,7 +166,7 @@ export async function createBooking(input: CreateBookingInput) {
     bookingItemsData.push({
       ticketId: item.ticketId,
       quantity: item.quantity,
-      basePrice: isAgent ? ticket.agentPrice : ticket.customerPrice,
+      basePrice: isAgentOrAdmin ? ticket.agentPrice : ticket.customerPrice,
       appliedPrice,
       isOfferApplied,
       totalPrice: itemTotal,
@@ -164,7 +176,7 @@ export async function createBooking(input: CreateBookingInput) {
   // Generate booking reference
   const bookingReference = "BK_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-  const paymentMethod = input.paymentMethod || (isAgent ? "OFFLINE" : "ONLINE");
+  const paymentMethod = input.paymentMethod || (isAgentOrAdmin ? "OFFLINE" : "ONLINE");
 
   let razorpayOrderId: string | undefined;
   if (paymentMethod === "ONLINE") {

@@ -24,6 +24,8 @@ export default function AdminTicketsPage() {
   const [addError, setAddError] = useState<string>("");
   // Use string inputs to avoid Number("") flicker to 0 while typing
   const [form, setForm] = useState({
+    name: "",
+    description: "",
     basePrice: "",
     agentPrice: "",
   });
@@ -64,6 +66,8 @@ export default function AdminTicketsPage() {
   const openEdit = (t: AdminTicketCategory) => {
     setEditing(t);
     setForm({
+      name: String(t.name ?? ""),
+      description: String(t.description ?? ""),
       basePrice: String(t.basePrice ?? ""),
       agentPrice: String(t.agentPrice ?? ""),
     });
@@ -85,8 +89,9 @@ export default function AdminTicketsPage() {
     setSaving(true);
     try {
       if (editing?.id) {
-        // API expects customerPrice (base) and agentPrice
         await apiPut(`/api/admin/tickets/${editing.id}`, {
+          name: form.name?.trim() || editing.name,
+          description: form.description?.trim() || editing.description || null,
           customerPrice: baseNum,
           agentPrice: agentNum,
         });
@@ -266,13 +271,7 @@ export default function AdminTicketsPage() {
               <div className="mt-4 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditing(t);
-                    setForm({
-                      basePrice: String(t.basePrice ?? ""),
-                      agentPrice: String(t.agentPrice ?? "")
-                    });
-                  }}
+                  onClick={() => openEdit(t)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -320,6 +319,28 @@ export default function AdminTicketsPage() {
             )}
 
             <div className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Base Price (INR)
@@ -377,6 +398,30 @@ export default function AdminTicketsPage() {
                 className="rounded-lg border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!editing) return;
+                  try {
+                    setSaving(true);
+                    await apiPut(`/api/admin/tickets/${editing.id}`, {
+                      isActive: !editing.isActive,
+                    });
+                    setEditing(null);
+                    fetchTickets();
+                  } catch (err) {
+                    setError(
+                      err instanceof Error ? err.message : "Failed to update status",
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+                className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+              >
+                {editing?.isActive ? "Deactivate" : "Activate"}
               </button>
               <button
                 type="button"

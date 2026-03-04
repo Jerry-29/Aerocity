@@ -16,7 +16,24 @@ import {
   CreditCard,
   Banknote,
   Ticket,
+  Printer,
 } from "lucide-react";
+
+// Non-closable processing modal
+function ProcessingModal({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-sm rounded-2xl border bg-card p-8 shadow-2xl text-center">
+        <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
+        <h3 className="mb-2 text-xl font-bold text-foreground">Processing...</h3>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <p className="mt-6 text-xs font-medium text-secondary animate-pulse">
+          Please do not close or refresh this page.
+        </p>
+      </div>
+    </div>
+  );
+}
 import { cn, formatPrice, validateMobile, validateEmail } from "@/lib/utils";
 import { apiGet, apiPost, isSuccessResponse } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
@@ -45,6 +62,7 @@ interface TicketOption {
   id: number;
   name: string;
   description: string;
+  price: number;
   agentPrice: number;
   customerPrice: number;
 }
@@ -65,16 +83,15 @@ export default function AgentBookPage() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"ONLINE" | "OFFLINE">(
-    "OFFLINE"
-  );
+  const [paymentMethod] = useState<"ONLINE">("ONLINE");
   const [processing, setProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState("");
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
   const [availableTickets, setAvailableTickets] = useState<TicketOption[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [razorpayReady, setRazorpayReady] = useState(false);
+  const [paymentSystemReady, setPaymentSystemReady] = useState(false);
 
   const selections: TicketSelection[] = useMemo(() => {
     return availableTickets
@@ -83,8 +100,8 @@ export default function AgentBookPage() {
         categoryId: t.id,
         categoryName: t.name,
         quantity: tickets[t.id],
-        unitPrice: t.agentPrice,
-        totalPrice: t.agentPrice * tickets[t.id],
+        unitPrice: t.price,
+        totalPrice: t.price * tickets[t.id],
       }));
   }, [availableTickets, tickets]);
 
@@ -97,7 +114,9 @@ export default function AgentBookPage() {
       setError("");
       const response = await apiGet<TicketOption[]>("/api/tickets");
       if (!isSuccessResponse(response)) {
-        setError(response.error || response.message || "Failed to load tickets");
+        setError(
+          response.error || response.message || "Failed to load tickets",
+        );
         setAvailableTickets([]);
         setTicketsLoading(false);
         return;
@@ -108,6 +127,7 @@ export default function AgentBookPage() {
           id: ticket.id,
           name: ticket.name,
           description: ticket.description,
+          price: Number(ticket.price),
           agentPrice: Number(ticket.agentPrice),
           customerPrice: Number(ticket.customerPrice),
         })),
@@ -118,18 +138,18 @@ export default function AgentBookPage() {
   }, []);
 
   useEffect(() => {
-    const existing = document.getElementById("razorpay-checkout");
+    const existing = document.getElementById("payment-gateway-script");
     if (existing) {
-      setRazorpayReady(true);
+      setPaymentSystemReady(true);
       return;
     }
     const script = document.createElement("script");
-    script.id = "razorpay-checkout";
+    script.id = "payment-gateway-script";
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
-    script.onload = () => setRazorpayReady(true);
+    script.onload = () => setPaymentSystemReady(true);
     script.onerror = () => {
-      setRazorpayReady(false);
+      setPaymentSystemReady(false);
       setError("Failed to load payment system. Please refresh.");
     };
     document.body.appendChild(script);
@@ -194,10 +214,12 @@ export default function AgentBookPage() {
 
   const handlePay = async () => {
     setProcessing(true);
+    setProcessingMessage("Creating your booking...");
     setError("");
     try {
       if (!user?.id) {
         setError("Agent session is missing. Please log in again.");
+        setProcessing(false);
         return;
       }
       const items = selections.map((item) => ({
@@ -222,30 +244,33 @@ export default function AgentBookPage() {
 
       if (!isSuccessResponse(response)) {
         setError(response.error || response.message || "Failed to create booking");
+        setProcessing(false);
         return;
       }
 
       const createdBooking = response.data;
 
       if (paymentMethod === "ONLINE") {
-        if (!razorpayReady || !window.Razorpay) {
+        if (!paymentSystemReady || !window.Razorpay) {
           setError("Payment system is not ready. Please refresh and try again.");
+          setProcessing(false);
           return;
         }
 
-        const razorpayOrderId = createdBooking.razorpayOrderId;
-        if (!razorpayOrderId) {
+        const gatewayOrderId = createdBooking.razorpayOrderId;
+        if (!gatewayOrderId) {
           setError("Missing payment order. Please try again.");
+          setProcessing(false);
           return;
         }
 
         const amount = Number(createdBooking.totalAmount) || 0;
 
-        const razorpay = new window.Razorpay({
+        const paymentGateway = new window.Razorpay({
           key:
             process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
             process.env.RAZORPAY_KEY_ID,
-          order_id: razorpayOrderId,
+          order_id: gatewayOrderId,
           amount: Math.round(amount * 100),
           currency: "INR",
           name: "Aerocity",
@@ -256,6 +281,8 @@ export default function AgentBookPage() {
             contact: mobile.trim(),
           },
           handler: async (response: RazorpayResponse) => {
+            setProcessing(true);
+            setProcessingMessage("Verifying payment and generating your ticket...");
             const verify = await apiPost("/api/bookings/verify-payment", {
               bookingReference: createdBooking.bookingReference,
               razorpayOrderId: response.razorpay_order_id,
@@ -283,7 +310,9 @@ export default function AgentBookPage() {
           },
         });
 
-        razorpay.open();
+        setProcessing(false);
+        setProcessingMessage("");
+        paymentGateway.open();
         return;
       }
 
@@ -303,72 +332,94 @@ export default function AgentBookPage() {
 
   if (completed) {
     return (
-      <div className="mx-auto max-w-lg py-8 text-center">
-        <div className="rounded-xl border bg-card p-8 shadow-sm">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
+      <div className="mx-auto max-w-lg py-8 text-center animate-in fade-in zoom-in duration-300">
+        <div className="rounded-2xl border bg-card p-8 shadow-xl">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 ring-8 ring-green-50">
+            <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">
-            Booking Confirmed!
+          <h2 className="text-2xl font-bold text-foreground">
+            Booking Successful!
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            The booking has been created successfully.
+            The booking has been confirmed and tickets generated.
           </p>
-          <div className="mt-4 rounded-lg bg-muted/50 px-4 py-3">
-            <p className="text-xs text-muted-foreground">Booking Reference</p>
-            <p className="text-lg font-bold font-mono text-primary">
-              {bookingRef}
-            </p>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-left">
-            <div>
-              <p className="text-xs text-muted-foreground">Customer</p>
-              <p className="font-medium text-foreground">{name}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Mobile</p>
-              <p className="font-medium text-foreground">{mobile}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Visit Date</p>
-              <p className="font-medium text-foreground">
-                {new Date(visitDate).toLocaleDateString("en-IN")}
+
+          <div className="mt-8 overflow-hidden rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4">
+            <div className="mb-4 flex flex-col items-center">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                Booking Reference
+              </p>
+              <p className="mt-1 text-2xl font-black font-mono text-primary">
+                {bookingRef}
               </p>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="font-bold text-primary">
-                {formatPrice(totalAmount)}
-              </p>
+
+            <div className="grid grid-cols-2 gap-y-4 border-t border-dashed border-primary/20 pt-4 text-left">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer</p>
+                <p className="font-semibold text-foreground truncate">{name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mobile</p>
+                <p className="font-semibold text-foreground">{mobile}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Visit Date</p>
+                <p className="font-semibold text-foreground">
+                  {new Date(visitDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric"
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Paid</p>
+                <p className="font-bold text-primary">
+                  {formatPrice(totalAmount)}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="mt-6 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                router.push(`/agent/bookings/${bookingRef}`)
-              }
-              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              View Booking
-            </button>
+
+          <div className="mt-8 flex flex-col gap-3">
             <button
               type="button"
               onClick={() => {
-                setStep(1);
-                setVisitDate("");
-                setTickets({});
-                setName("");
-                setMobile("");
-                setEmail("");
-                setPaymentMethod("OFFLINE");
-                setCompleted(false);
-                setBookingRef("");
+                const url = `/api/bookings/${bookingRef}/ticket`;
+                window.open(url, "_blank");
               }}
-              className="rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
+              className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 active:scale-95"
             >
-              Book Another
+              <Printer className="h-4 w-4" />
+              Print Ticket
             </button>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => router.push(`/agent/bookings/${bookingRef}`)}
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-95"
+              >
+                View Details
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setTickets({});
+                  setVisitDate("");
+                  setName("");
+                  setMobile("");
+                  setEmail("");
+                  setCompleted(false);
+                  setBookingRef("");
+                }}
+                className="flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-bold text-secondary-foreground transition-all hover:bg-secondary/90 active:scale-95"
+              >
+                New Booking
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -377,6 +428,7 @@ export default function AgentBookPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {processing && <ProcessingModal message={processingMessage} />}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Book Tickets</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -477,10 +529,12 @@ export default function AgentBookPage() {
                             {t.description}
                           </p>
                           <p className="mt-0.5 text-sm font-bold text-secondary">
-                            {formatPrice(t.agentPrice)}{" "}
-                            <span className="text-xs font-normal text-muted-foreground line-through">
-                              {formatPrice(t.customerPrice)}
-                            </span>
+                            {formatPrice(t.price)}{" "}
+                            {t.price < t.agentPrice && (
+                              <span className="text-xs font-normal text-muted-foreground line-through">
+                                {formatPrice(t.agentPrice)}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -605,51 +659,6 @@ export default function AgentBookPage() {
                   )}
                 </div>
               </div>
-
-              {/* Payment Method */}
-              <div className="rounded-xl border bg-card p-5 shadow-sm">
-                <h3 className="mb-3 text-base font-semibold text-foreground">
-                  Payment Method
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("OFFLINE")}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-colors",
-                      paymentMethod === "OFFLINE"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <Banknote className="h-6 w-6 text-green-600" />
-                    <span className="text-sm font-medium text-foreground">
-                      Offline Payment
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Cash / UPI
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("ONLINE")}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-colors",
-                      paymentMethod === "ONLINE"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <CreditCard className="h-6 w-6 text-blue-600" />
-                    <span className="text-sm font-medium text-foreground">
-                      Online (Razorpay)
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Card / Net Banking
-                    </span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -657,21 +666,13 @@ export default function AgentBookPage() {
           {step === 4 && (
             <div className="rounded-xl border bg-card p-6 shadow-sm text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                {paymentMethod === "ONLINE" ? (
-                  <CreditCard className="h-7 w-7 text-primary" />
-                ) : (
-                  <Banknote className="h-7 w-7 text-green-600" />
-                )}
+                <CreditCard className="h-7 w-7 text-primary" />
               </div>
               <h3 className="text-lg font-semibold text-foreground">
-                {paymentMethod === "ONLINE"
-                  ? "Proceed with Razorpay"
-                  : "Confirm Offline Payment"}
+                Proceed with Online Payment
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                {paymentMethod === "ONLINE"
-                  ? "The customer will be charged via Razorpay payment gateway"
-                  : "Confirm that the customer has paid the amount in cash or via UPI"}
+                The customer will be charged via our secure payment gateway
               </p>
               <p className="mt-4 text-3xl font-bold text-primary">
                 {formatPrice(totalAmount)}
@@ -679,15 +680,13 @@ export default function AgentBookPage() {
               <button
                 type="button"
                 onClick={handlePay}
-                disabled={processing}
+                disabled={processing || !paymentSystemReady}
                 className="mt-6 flex items-center justify-center gap-2 mx-auto rounded-lg bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {processing && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                {paymentMethod === "ONLINE"
-                  ? "Pay with Razorpay"
-                  : "Mark as Paid"}
+                Pay Now
               </button>
             </div>
           )}

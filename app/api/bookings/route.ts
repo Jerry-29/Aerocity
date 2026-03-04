@@ -5,6 +5,8 @@ import { validateBookingRequest } from "@/lib/validators";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { ValidationError, NotFoundError } from "@/lib/errors";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { generateTicketPDF } from "@/lib/generate-ticket-pdf";
+import { uploadTicket } from "@/lib/uploadTicket";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +18,30 @@ export async function POST(request: NextRequest) {
     // Create booking
     const booking = await createBooking(body);
 
-    if (body?.bookedByRole === "AGENT" && body?.paymentMethod === "OFFLINE") {
+    // If offline booking (by agent or admin), generate ticket PDF now
+    if (booking.paymentStatus === "PAID" || body?.paymentMethod === "OFFLINE") {
+      try {
+        const pdfBuffer = await generateTicketPDF({
+          bookingReference: booking.bookingReference,
+          customerName: booking.customerName,
+          customerMobile: booking.customerMobile,
+          visitDate: booking.visitDate,
+          totalAmount: booking.totalAmount.toString(),
+          tickets: booking.items.map((item: any) => ({
+            name: item.ticketName,
+            quantity: item.quantity,
+            unitPrice: Number(item.appliedPrice),
+            lineTotal: Number(item.totalPrice),
+          })),
+        });
+
+        await uploadTicket(pdfBuffer, booking.bookingReference);
+      } catch (pdfError) {
+        console.error("Offline booking ticket generation failed:", pdfError);
+      }
+    }
+
+    if ((body?.bookedByRole === "AGENT" || body?.bookedByRole === "ADMIN") && body?.paymentMethod === "OFFLINE") {
       (async () => {
         try {
           await sendWhatsAppMessage({

@@ -1,60 +1,37 @@
-import { NextResponse } from 'next/server';
-import { prisma } from "@/lib/db";
-import { withAuth } from "@/lib/auth-middleware";
-import { generateTicketPDF } from "@/lib/generate-ticket-pdf";
+import { NextRequest, NextResponse } from "next/server";
+import cloudinary from "@/lib/cloudinary";
 
-export async function GET(request: Request) {
-  const { auth, error } = await withAuth(request as any);
-  if (error) return error;
-
-  const { pathname } = new URL(request.url);
+function parseReference(pathname: string) {
   const segs = pathname.split("/").filter(Boolean);
-  const reference = segs[segs.length - 1];
-  const booking = await prisma.booking.findUnique({
-    where: { bookingReference: reference },
-    include: {
-      bookingItems: {
-        include: {
-          ticket: {
-            select: { name: true },
-          },
-        },
+  const idx = segs.findIndex((s) => s === "bookings");
+  if (idx >= 0 && segs[idx + 1]) return segs[idx + 1];
+  return "";
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const ref = parseReference(new URL(request.url).pathname);
+    if (!ref) {
+      return NextResponse.json({ error: "Invalid reference" }, { status: 400 });
+    }
+    const url = (cloudinary as any).url(`tickets/${ref}.pdf`, {
+      secure: true,
+      resource_type: "raw",
+    } as any);
+    const res = await fetch(url);
+    if (!res.ok) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    return new NextResponse(buf, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${ref}.pdf"`,
+        "Content-Length": String(buf.length),
       },
-    },
-  });
-
-  if (!booking) {
-    return NextResponse.json("Booking not found" as any, { status: 404 });
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Failed to download ticket" }, { status: 500 });
   }
-
-  if (auth?.role === "AGENT" && booking.agentId !== auth.userId) {
-    return NextResponse.json("Forbidden" as any, { status: 403 });
-  }
-
-  const pdfBuffer = await generateTicketPDF({
-    bookingReference: booking.bookingReference,
-    customerName: booking.customerName,
-    customerMobile: booking.customerMobile,
-    visitDate: booking.visitDate,
-    totalAmount: booking.totalAmount.toString(),
-    tickets: booking.bookingItems.map((item: {
-      ticket: { name: string };
-      quantity: number;
-      appliedPrice: any;
-      totalPrice: any;
-    }) => ({
-      name: item.ticket.name,
-      quantity: item.quantity,
-      unitPrice: Number(item.appliedPrice),
-      lineTotal: Number(item.totalPrice),
-    })),
-  });
-
-  return new NextResponse(pdfBuffer as any, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${booking.bookingReference}.pdf"`,
-    },
-  });
 }

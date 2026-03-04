@@ -2,6 +2,7 @@ type TicketTemplateItem = {
   ticketName: string;
   quantity: number;
   appliedPrice: number | string;
+  unitPrice?: number | string;
 };
 
 type BuildTicketHtmlInput = {
