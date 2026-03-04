@@ -6,6 +6,8 @@ import type {
   Attraction,
   GalleryItem,
 } from "./types";
+import { prisma } from "@/lib/db";
+import { sql } from "@/lib/neon";
 
 export const ticketCategories: TicketCategory[] = [
   {
@@ -57,7 +59,7 @@ export const ticketCategories: TicketCategory[] = [
     slug: "kid-without-food",
     description: "Full day access for children (3-12 years)",
     basePrice: 600,
-    offerPrice: 499,
+    offerPrice: 300,
     includes: [
       "All rides & attractions",
       "Locker facility",
@@ -290,18 +292,177 @@ export const galleryItems: GalleryItem[] = [
 
 // Async mock data fetchers (ready to swap with real API calls)
 export async function fetchTicketCategories(): Promise<TicketCategory[]> {
-  return ticketCategories;
+  try {
+    if (sql) {
+      const tickets = await (sql as any)`
+        SELECT "id","name","slug","description","customerPrice","createdAt"
+        FROM "Ticket"
+        WHERE "isActive" = true
+        ORDER BY "createdAt" DESC
+      `;
+      const offerPrices = await (sql as any)`
+        SELECT otp."ticketId" AS "ticketId", otp."offerPrice" AS "offerPrice"
+        FROM "OfferTicketPrice" AS otp
+        JOIN "Offer" o ON o."id" = otp."offerId"
+        WHERE o."isActive" = true
+          AND o."startDate" <= NOW()
+          AND o."endDate" >= NOW()
+      `;
+      const byTicket = new Map<number, number>();
+      for (const row of offerPrices as any[]) {
+        const tid = Number(row.ticketId);
+        const val = Number(row.offerPrice);
+        const prev = byTicket.get(tid);
+        if (prev === undefined || val < prev) byTicket.set(tid, val);
+      }
+      return (tickets as any[]).map((t) => {
+        const fallback = ticketCategories.find((x) => x.slug === t.slug);
+        return {
+          id: Number(t.id),
+          name: t.name,
+          slug: t.slug,
+          description: t.description || "",
+          basePrice: Number(t.customerPrice),
+          offerPrice: byTicket.get(Number(t.id)) ?? null,
+          includes:
+            fallback?.includes && fallback.includes.length > 0
+              ? fallback.includes
+              : ["All rides and attractions access"],
+        } satisfies TicketCategory;
+      });
+    }
+    const now = new Date();
+    const [tickets, activeOffers] = await Promise.all([
+      prisma.ticket.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          customerPrice: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.offer.findMany({
+        where: {
+          isActive: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        include: {
+          offerPrices: true,
+        },
+      }),
+    ]);
+
+    return tickets.map((ticket: any) => {
+      let bestOfferPrice: number | null = null;
+      for (const offer of activeOffers) {
+        for (const offerPrice of offer.offerPrices) {
+          if (offerPrice.ticketId === ticket.id) {
+            const candidate = Number(offerPrice.offerPrice);
+            if (bestOfferPrice === null || candidate < bestOfferPrice) {
+              bestOfferPrice = candidate;
+            }
+          }
+        }
+      }
+
+      const fallback = ticketCategories.find((t) => t.slug === ticket.slug);
+      return {
+        id: ticket.id,
+        name: ticket.name,
+        slug: ticket.slug,
+        description: ticket.description || "",
+        basePrice: Number(ticket.customerPrice),
+        offerPrice: bestOfferPrice,
+        includes:
+          fallback?.includes && fallback.includes.length > 0
+            ? fallback.includes
+            : ["All rides and attractions access"],
+      } satisfies TicketCategory;
+    });
+  } catch (error) {
+    console.error("fetchTicketCategories error:", error);
+    // Avoid serving stale/static data; return empty to reflect current state
+    return [];
+  }
 }
 
 export async function fetchActiveOffer(): Promise<Offer | null> {
-  return activeOffer;
+  try {
+    const now = new Date();
+    const current = await prisma.offer.findFirst({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!current) return null;
+
+    return {
+      id: current.id,
+      name: current.name,
+      description: current.description || "",
+      startDate: current.startDate.toISOString().split("T")[0],
+      endDate: current.endDate.toISOString().split("T")[0],
+      isActive: current.isActive,
+      discountPercentage: 0,
+    };
+  } catch (err) {
+    // Avoid showing a fake/legacy offer on failure
+    return null;
+  }
 }
 
 export async function fetchAnnouncements(): Promise<Announcement[]> {
+  try {
+    const base = process.env.NEXT_PUBLIC_APP_URL || "";
+    const res = await fetch(`${base}/api/announcements`, { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      const list: any[] = Array.isArray(json?.data) ? json.data : [];
+      return list.map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        message: a.content || "",
+        type: a.type || "info",
+        isActive: !!a.isActive,
+        createdAt: a.createdAt,
+      }));
+    }
+  } catch {
+    // ignore and fallback
+  }
   return announcements.filter((a) => a.isActive);
 }
 
 export async function fetchTestimonials(): Promise<Testimonial[]> {
+  try {
+    const base = process.env.NEXT_PUBLIC_APP_URL || "";
+    const res = await fetch(`${base}/api/testimonials`, { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      const data: any[] = Array.isArray(json?.data) ? json.data : [];
+      return data.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        rating: Number(t.rating) || 0,
+        content: t.content || "",
+        visitDate:
+          typeof t.visitDate === "string"
+            ? t.visitDate.split("T")[0]
+            : new Date(t.visitDate).toISOString().split("T")[0],
+        isApproved: true,
+      }));
+    }
+  } catch {
+    // ignore and fallback
+  }
   return testimonials.filter((t) => t.isApproved);
 }
 

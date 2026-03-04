@@ -21,7 +21,7 @@ export function StepDetails() {
     else if (!validateMobile(mobile))
       newErrors.mobile =
         "Enter a valid 10-digit Indian mobile number (starts with 6-9)";
-    if (email && !validateEmail(email))
+    if (email.trim() && !validateEmail(email))
       newErrors.email = "Enter a valid email address";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -51,7 +51,7 @@ export function StepDetails() {
         </h2>
         <p className="mb-8 text-sm text-muted-foreground">
           Enter your contact information. We will send your booking
-          confirmation and ticket via SMS.
+          confirmation and ticket via WhatsApp.
         </p>
 
         <div className="flex flex-col gap-6">
@@ -117,7 +117,7 @@ export function StepDetails() {
               </span>
             )}
             <span className="text-xs text-muted-foreground">
-              Your e-ticket will be sent to this number via SMS
+              Your e-ticket will be sent to this number via WhatsApp
             </span>
           </div>
 
@@ -128,8 +128,7 @@ export function StepDetails() {
               className="flex items-center gap-2 text-sm font-medium text-foreground"
             >
               <Mail className="h-4 w-4 text-secondary" />
-              Email Address{" "}
-              <span className="text-xs text-muted-foreground">(optional)</span>
+              Email Address <span className="text-muted-foreground">(optional)</span>
             </label>
             <input
               id="customer-email"

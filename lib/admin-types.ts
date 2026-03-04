@@ -7,6 +7,7 @@ export interface AuthUser {
   email?: string;
   mobile?: string;
   role: "ADMIN" | "AGENT";
+  mustResetPassword?: boolean;
 }
 
 export interface LoginRequest {
@@ -125,7 +126,7 @@ export interface AdminMedia {
   type: "IMAGE" | "VIDEO";
   url: string;
   thumbnailUrl: string;
-  category: "GALLERY" | "ATTRACTION" | "GENERAL";
+  category: "GALLERY" | "ATTRACTION" | "GENERAL" | "HERO";
   isPublic: boolean;
   uploadedBy: number;
   createdAt: string;

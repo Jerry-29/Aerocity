@@ -1,20 +1,73 @@
 "use client";
 
-import { useState, useRef } from "react";
-import Image from "next/image";
-import { Upload, Trash2, Image as ImageIcon, Film, Filter } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import Image from 'next/image';
+import { Upload, Trash2, Image as ImageIcon, Film, Filter, Star } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
-import { mockMedia } from "@/lib/admin-data";
 import type { AdminMedia } from "@/lib/admin-types";
+import { apiGet, apiDelete, apiPost, isSuccessResponse } from "@/lib/api-client";
 
 export default function AdminMediaPage() {
-  const [media, setMedia] = useState(mockMedia);
+  const [media, setMedia] = useState<AdminMedia[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [deleteTarget, setDeleteTarget] = useState<AdminMedia | null>(null);
   const [uploadCat, setUploadCat] = useState("GALLERY");
+  const [heroActive, setHeroActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [heroId, setHeroId] = useState<number | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const url = `/api/admin/media?page=1&pageSize=100&category=${filter}&type=${typeFilter}`;
+      const res = await apiGet<any>(url);
+      if (!isSuccessResponse(res)) {
+        throw new Error(res.message || "Failed to load media");
+      }
+      const payload = res.data;
+      const list: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      setMedia(
+        list.map((m: any) => ({
+          id: m.id,
+          type: m.type,
+          url: m.url,
+          thumbnailUrl: m.thumbnailUrl || m.url,
+          category: m.category,
+          isPublic: !!m.isPublic,
+          uploadedBy: 0,
+          createdAt: m.createdAt,
+        })),
+      );
+    } catch (e: any) {
+      setError(e?.message || "Failed to load media");
+      setMedia([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, typeFilter]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiGet<any>("/api/admin/hero");
+        if (isSuccessResponse(res)) {
+          setHeroId(res.data?.id ?? null);
+        }
+      } catch {
+        setHeroId(null);
+      }
+    })();
+  }, []);
 
   const filtered = media.filter((m) => {
     if (filter !== "ALL" && m.category !== filter) return false;
@@ -22,25 +75,65 @@ export default function AdminMediaPage() {
     return true;
   });
 
-  const handleUpload = () => {
-    // In production, this would upload to Cloudinary via the backend
-    const newMedia: AdminMedia = {
-      id: Date.now(),
-      type: "IMAGE",
-      url: "/images/hero-waterpark.jpg",
-      thumbnailUrl: "/images/hero-waterpark.jpg",
-      category: uploadCat as AdminMedia["category"],
-      isPublic: true,
-      uploadedBy: 1,
-      createdAt: new Date().toISOString(),
-    };
-    setMedia((prev) => [newMedia, ...prev]);
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const form = new FormData();
+    form.set("file", files[0]);
+    form.set("category", uploadCat);
+    form.set("type", files[0].type.startsWith("video/") ? "VIDEO" : "IMAGE");
+    if (uploadCat === "HERO") {
+      form.set("active", heroActive ? "true" : "false");
+    }
+    try {
+      setLoading(true);
+      setError("");
+      const resp = await fetch("/api/admin/media", {
+        method: "POST",
+        body: form,
+      });
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => null);
+        throw new Error(j?.message || "Upload failed");
+      }
+      await load();
+    } catch (err: any) {
+      setError(err?.message || "Upload failed");
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    setMedia((prev) => prev.filter((m) => m.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      setLoading(true);
+      const res = await apiDelete(`/api/admin/media/${deleteTarget.id}`);
+      if (!isSuccessResponse(res)) {
+        throw new Error(res.message || "Delete failed");
+      }
+      await load();
+    } catch (e: any) {
+      setError(e?.message || "Delete failed");
+    } finally {
+      setDeleteTarget(null);
+      setLoading(false);
+    }
+  };
+
+  const setAsHero = async (m: AdminMedia) => {
+    try {
+      const res = await apiPost("/api/admin/hero", { id: m.id });
+      if (isSuccessResponse(res)) {
+        setHeroId(m.id);
+        await load();
+      } else {
+        setError(res.message || "Failed to set hero");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Failed to set hero");
+    }
   };
 
   return (
@@ -80,7 +173,19 @@ export default function AdminMediaPage() {
             <option value="GALLERY">Gallery</option>
             <option value="ATTRACTION">Attraction</option>
             <option value="GENERAL">General</option>
+            <option value="HERO">Hero</option>
           </select>
+          {uploadCat === "HERO" && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={heroActive}
+                onChange={(e) => setHeroActive(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Make active hero
+            </label>
+          )}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -104,6 +209,7 @@ export default function AdminMediaPage() {
           <option value="GALLERY">Gallery</option>
           <option value="ATTRACTION">Attraction</option>
           <option value="GENERAL">General</option>
+          <option value="HERO">Hero</option>
         </select>
         <select
           value={typeFilter}
@@ -120,6 +226,11 @@ export default function AdminMediaPage() {
       </div>
 
       {/* Media Grid */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
+      )}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-16 text-center">
           <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -140,12 +251,22 @@ export default function AdminMediaPage() {
                     src={m.thumbnailUrl}
                     alt="Media"
                     fill
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                     className="object-cover"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center bg-muted">
-                    <Film className="h-8 w-8 text-muted-foreground" />
-                  </div>
+                  <video
+                    className="h-full w-full object-cover"
+                    preload="metadata"
+                    playsInline
+                    muted
+                    // Keep admin previews light; play on hover
+                    poster={m.thumbnailUrl || undefined}
+                    onMouseEnter={(e) => (e.currentTarget.play().catch(() => {}))}
+                    onMouseLeave={(e) => e.currentTarget.pause()}
+                  >
+                    <source src={m.url} />
+                  </video>
                 )}
                 {/* Overlay on hover */}
                 <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 opacity-0 transition-all group-hover:bg-foreground/40 group-hover:opacity-100">
@@ -157,12 +278,45 @@ export default function AdminMediaPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setAsHero(m)}
+                    className="ml-3 flex h-9 items-center justify-center gap-1 rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground shadow-lg transition-transform hover:scale-105"
+                    aria-label="Set as hero"
+                    title="Set as hero"
+                  >
+                    <Star className="h-4 w-4" />
+                    Hero
+                  </button>
                 </div>
               </div>
               <div className="flex items-center justify-between px-3 py-2">
                 <StatusBadge status={m.category} />
-                <StatusBadge status={m.type} />
+                <div className="flex items-center gap-2">
+                  {m?.category === "HERO" && m.id === heroId && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary/20 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                      <Star className="h-3 w-3" /> HERO
+                    </span>
+                  )}
+                  <StatusBadge status={m.type} />
+                </div>
               </div>
+              {m.category === "HERO" && (
+                <div className="flex items-center justify-between px-3 pb-3">
+                  <span className="text-[11px] text-muted-foreground">
+                    {m.id === heroId ? "Active hero" : "Inactive hero"}
+                  </span>
+                  {m.id !== heroId && (
+                    <button
+                      type="button"
+                      onClick={() => setAsHero(m)}
+                      className="rounded-lg border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted"
+                    >
+                      Set Active
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

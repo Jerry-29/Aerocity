@@ -56,7 +56,15 @@ export function StepOffer() {
                 )}
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {offer.description}
+                {(() => {
+                  const raw = offer.description || "";
+                  const match = raw.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+                  const pct = match ? parseFloat(match[1]) : null;
+                  const cleaned = raw.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "").trim();
+                  return pct !== null
+                    ? `${pct}% discount on all tickets.`
+                    : cleaned || "Special prices are applied automatically.";
+                })()}
               </p>
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />

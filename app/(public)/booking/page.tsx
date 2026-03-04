@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { fetchTicketCategories, fetchActiveOffer } from "@/lib/data";
-import { BookingProvider } from "@/lib/booking-context";
-import { BookingFlow } from "@/components/booking/booking-flow";
+import { BookingLoader } from "@/components/booking/booking-loader";
 
 export const metadata: Metadata = {
   title: "Book Tickets",
@@ -10,11 +8,6 @@ export const metadata: Metadata = {
 };
 
 export default async function BookingPage() {
-  const [categories, offer] = await Promise.all([
-    fetchTicketCategories(),
-    fetchActiveOffer(),
-  ]);
-
   return (
     <section className="py-10 lg:py-16">
       <div className="mx-auto max-w-5xl px-4 lg:px-8">
@@ -29,9 +22,7 @@ export default async function BookingPage() {
           </p>
         </div>
 
-        <BookingProvider categories={categories} offer={offer}>
-          <BookingFlow />
-        </BookingProvider>
+        <BookingLoader />
       </div>
     </section>
   );

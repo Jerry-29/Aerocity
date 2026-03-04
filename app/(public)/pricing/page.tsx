@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Check, ArrowRight, HelpCircle, ChevronDown } from "lucide-react";
-import { fetchTicketCategories, fetchActiveOffer } from "@/lib/data";
-import { formatPrice } from "@/lib/utils";
+import { HelpCircle, ChevronDown } from "lucide-react";
+import { PricingLoader } from "@/components/pricing/pricing-loader";
 
 export const metadata: Metadata = {
   title: "Pricing & Tickets",
@@ -45,11 +44,6 @@ const faqs = [
 ];
 
 export default async function PricingPage() {
-  const [categories, offer] = await Promise.all([
-    fetchTicketCategories(),
-    fetchActiveOffer(),
-  ]);
-
   return (
     <>
       {/* Hero Banner */}
@@ -77,108 +71,7 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      {/* Offer Banner */}
-      {offer && offer.isActive && (
-        <section className="bg-accent/10 py-4">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-2 px-4 text-center sm:flex-row sm:justify-center sm:gap-4 lg:px-8">
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-accent" />
-            </span>
-            <p className="text-sm font-medium text-foreground">
-              <span className="font-bold">{offer.name}</span> is live!{" "}
-              {offer.description}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* Pricing Cards */}
-      <section className="py-16 lg:py-24">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((cat, index) => {
-              const isPopular = index === 0;
-              return (
-                <div
-                  key={cat.id}
-                  className={`relative flex flex-col rounded-xl border bg-card p-6 transition-all hover:shadow-lg ${
-                    isPopular ? "border-secondary shadow-md" : ""
-                  }`}
-                >
-                  {isPopular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-secondary px-4 py-1 text-xs font-semibold text-secondary-foreground">
-                      Most Popular
-                    </span>
-                  )}
-                  <h3 className="mb-2 text-lg font-semibold text-card-foreground">
-                    {cat.name}
-                  </h3>
-                  <p className="mb-6 text-sm text-muted-foreground">
-                    {cat.description}
-                  </p>
-
-                  <div className="mb-6 flex items-baseline gap-2">
-                    {cat.offerPrice ? (
-                      <>
-                        <span className="text-4xl font-bold text-primary">
-                          {formatPrice(cat.offerPrice)}
-                        </span>
-                        <span className="text-sm text-muted-foreground line-through">
-                          {formatPrice(cat.basePrice)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-4xl font-bold text-primary">
-                        {formatPrice(cat.basePrice)}
-                      </span>
-                    )}
-                  </div>
-                  <span className="mb-4 text-xs text-muted-foreground">
-                    per person / per visit
-                  </span>
-
-                  <ul className="mb-8 flex flex-1 flex-col gap-3">
-                    {cat.includes.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    href="/booking"
-                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all ${
-                      isPopular
-                        ? "bg-secondary text-secondary-foreground hover:brightness-110"
-                        : "border border-primary bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground"
-                    }`}
-                  >
-                    Book Now
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Children under 3 years enter free. Group discounts available for 20+
-            visitors.{" "}
-            <Link
-              href="/contact"
-              className="font-medium text-primary hover:underline"
-            >
-              Contact us
-            </Link>{" "}
-            for details.
-          </p>
-        </div>
-      </section>
+      <PricingLoader />
 
       {/* FAQ Section */}
       <section className="bg-muted py-16 lg:py-24">

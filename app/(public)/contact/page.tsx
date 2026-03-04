@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
+import Image from 'next/image';
 import {
   MapPin,
   Phone,
@@ -14,38 +14,83 @@ import {
   Twitter,
   CheckCircle,
 } from "lucide-react";
-import { PARK_INFO } from "@/lib/constants";
 import { validateMobile, validateEmail } from "@/lib/utils";
 
 export default function ContactPage() {
+  const [info, setInfo] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    mobile: "",
+    whatsapp: "",
     message: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoadError("");
+      try {
+        const res = await fetch("/api/contact", { cache: "no-store" });
+        if (!res.ok) throw new Error("Failed to load contact info");
+        const json = await res.json();
+        if (mounted) setInfo(json?.data || null);
+      } catch (e: any) {
+        if (mounted) setLoadError(e?.message || "Failed to load contact info");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (formData.email && !validateEmail(formData.email))
       newErrors.email = "Invalid email address";
-    if (!formData.mobile.trim())
-      newErrors.mobile = "Mobile number is required";
-    else if (!validateMobile(formData.mobile))
-      newErrors.mobile = "Enter a valid 10-digit mobile number";
+    if (!formData.whatsapp.trim())
+      newErrors.whatsapp = "WhatsApp number is required";
+    else if (!validateMobile(formData.whatsapp))
+      newErrors.whatsapp = "Enter a valid 10-digit WhatsApp number";
     if (!formData.message.trim()) newErrors.message = "Message is required";
+    else if (formData.message.length > 300)
+      newErrors.message = "Message must be 300 characters or fewer";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
+    if (!validate()) return;
+    try {
+      setSubmitting(true);
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        const msg = j?.error || j?.message || "Failed to submit message";
+        throw new Error(msg);
+      }
       setSubmitted(true);
-      setFormData({ name: "", email: "", mobile: "", message: "" });
+      setFormData({ name: "", email: "", whatsapp: "", message: "" });
+    } catch (err: any) {
+      setErrors({ form: err?.message || "Failed to submit message" });
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -81,6 +126,16 @@ export default function ContactPage() {
           <div className="grid gap-10 lg:grid-cols-5 lg:gap-16">
             {/* Contact Info */}
             <div className="flex flex-col gap-8 lg:col-span-2">
+              {loading && (
+                <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+                  Loading contact info...
+                </div>
+              )}
+              {!loading && loadError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                  {loadError}
+                </div>
+              )}
               {/* Address */}
               <div className="flex gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -91,9 +146,9 @@ export default function ContactPage() {
                     Address
                   </h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    {PARK_INFO.address}
+                    {info?.address || ""}
                     <br />
-                    {PARK_INFO.city}, {PARK_INFO.state} - {PARK_INFO.pincode}
+                    {info?.city}, {info?.state} - {info?.pincode}
                   </p>
                 </div>
               </div>
@@ -107,7 +162,7 @@ export default function ContactPage() {
                   <h3 className="mb-1 text-sm font-semibold text-foreground">
                     Phone
                   </h3>
-                  {PARK_INFO.phone.map((p) => (
+                  {(info?.phone || []).map((p: string) => (
                     <a
                       key={p}
                       href={`tel:${p.replace(/\s/g, "")}`}
@@ -129,10 +184,10 @@ export default function ContactPage() {
                     Email
                   </h3>
                   <a
-                    href={`mailto:${PARK_INFO.email}`}
+                    href={`mailto:${info?.email || ""}`}
                     className="text-sm text-muted-foreground hover:text-primary"
                   >
-                    {PARK_INFO.email}
+                    {info?.email || ""}
                   </a>
                 </div>
               </div>
@@ -147,9 +202,9 @@ export default function ContactPage() {
                     Park Timings
                   </h3>
                   <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                    <span>Weekdays: {PARK_INFO.timings.weekday}</span>
-                    <span>Weekends: {PARK_INFO.timings.weekend}</span>
-                    <span>Holidays: {PARK_INFO.timings.holiday}</span>
+                    <span>Weekdays: {info?.timings?.weekday || ""}</span>
+                    <span>Weekends: {info?.timings?.weekend || ""}</span>
+                    <span>Holidays: {info?.timings?.holiday || ""}</span>
                   </div>
                 </div>
               </div>
@@ -161,7 +216,7 @@ export default function ContactPage() {
                 </h3>
                 <div className="flex gap-3">
                   <a
-                    href={PARK_INFO.socialLinks.facebook}
+                    href={info?.socialLinks?.facebook || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -170,7 +225,7 @@ export default function ContactPage() {
                     <Facebook className="h-4 w-4" />
                   </a>
                   <a
-                    href={PARK_INFO.socialLinks.instagram}
+                    href={info?.socialLinks?.instagram || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -179,7 +234,7 @@ export default function ContactPage() {
                     <Instagram className="h-4 w-4" />
                   </a>
                   <a
-                    href={PARK_INFO.socialLinks.youtube}
+                    href={info?.socialLinks?.youtube || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -188,7 +243,7 @@ export default function ContactPage() {
                     <Youtube className="h-4 w-4" />
                   </a>
                   <a
-                    href={PARK_INFO.socialLinks.twitter}
+                    href={info?.socialLinks?.twitter || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -210,6 +265,11 @@ export default function ContactPage() {
                   Fill out the form below and we will get back to you within 24
                   hours.
                 </p>
+                {errors.form && (
+                  <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                    {errors.form}
+                  </div>
+                )}
 
                 {submitted ? (
                   <div className="flex flex-col items-center gap-4 rounded-lg bg-secondary/10 py-12 text-center">
@@ -292,32 +352,32 @@ export default function ContactPage() {
                       )}
                     </div>
 
-                    {/* Mobile */}
+                    {/* WhatsApp */}
                     <div className="flex flex-col gap-2">
                       <label
-                        htmlFor="contact-mobile"
+                        htmlFor="contact-whatsapp"
                         className="text-sm font-medium text-card-foreground"
                       >
-                        Mobile <span className="text-destructive">*</span>
+                        WhatsApp <span className="text-destructive">*</span>
                       </label>
                       <input
-                        id="contact-mobile"
+                        id="contact-whatsapp"
                         type="tel"
-                        value={formData.mobile}
+                        value={formData.whatsapp}
                         onChange={(e) =>
-                          setFormData({ ...formData, mobile: e.target.value })
+                          setFormData({ ...formData, whatsapp: e.target.value })
                         }
                         className={`rounded-lg border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-secondary/20 ${
-                          errors.mobile
+                          errors.whatsapp
                             ? "border-destructive"
                             : "focus:border-secondary"
                         }`}
                         placeholder="9876543210"
                         maxLength={10}
                       />
-                      {errors.mobile && (
+                      {errors.whatsapp && (
                         <span className="text-xs text-destructive">
-                          {errors.mobile}
+                          {errors.whatsapp}
                         </span>
                       )}
                     </div>
@@ -333,6 +393,7 @@ export default function ContactPage() {
                       <textarea
                         id="contact-message"
                         rows={5}
+                        maxLength={300}
                         value={formData.message}
                         onChange={(e) =>
                           setFormData({ ...formData, message: e.target.value })
@@ -344,6 +405,9 @@ export default function ContactPage() {
                         }`}
                         placeholder="How can we help you?"
                       />
+                      <div className="mt-1 text-right text-[11px] text-muted-foreground">
+                        {formData.message.length}/300
+                      </div>
                       {errors.message && (
                         <span className="text-xs text-destructive">
                           {errors.message}
@@ -354,10 +418,11 @@ export default function ContactPage() {
                     <div className="sm:col-span-2">
                       <button
                         type="submit"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 sm:w-auto"
+                        disabled={submitting}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-60 sm:w-auto"
                       >
                         <Send className="h-4 w-4" />
-                        Send Message
+                        {submitting ? "Sending..." : "Send Message"}
                       </button>
                     </div>
                   </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -7,7 +8,6 @@ import {
   User,
   Phone,
   Mail,
-  CreditCard,
   QrCode,
   Download,
   Printer,
@@ -15,19 +15,72 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatPrice } from "@/lib/utils";
-import { mockBookings } from "@/lib/admin-data";
+import { apiGet, isSuccessResponse } from "@/lib/api-client";
+import { buildTicketHtml } from "@/lib/ticket-template";
+
+interface BookingItem {
+  ticketId: number;
+  ticketName: string;
+  quantity: number;
+  appliedPrice: number;
+  isOfferApplied: boolean;
+  totalPrice: number;
+}
+
+interface BookingDetail {
+  id: number;
+  bookingReference: string;
+  visitDate: string;
+  customerName: string;
+  customerMobile: string;
+  customerEmail?: string;
+  paymentStatus: string;
+  isValidated: boolean;
+  totalAmount: number | string;
+  items: BookingItem[];
+  createdAt: string;
+}
 
 export default function AgentBookingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const reference = params.reference as string;
-  const booking = mockBookings.find((b) => b.bookingReference === reference);
+  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  useEffect(() => {
+    const fetchBooking = async () => {
+      setLoading(true);
+      setError("");
+      const response = await apiGet<BookingDetail>(`/api/bookings/${reference}`);
+      if (!isSuccessResponse(response)) {
+        setError(response.message || "Booking not found");
+        setBooking(null);
+        setLoading(false);
+        return;
+      }
+      setBooking(response.data);
+      setLoading(false);
+    };
+    if (reference) fetchBooking();
+  }, [reference]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-lg font-semibold text-foreground">Loading booking...</p>
+      </div>
+    );
+  }
 
   if (!booking) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <p className="text-lg font-semibold text-foreground">
-          Booking not found
+          {error || "Booking not found"}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           Reference: {reference}
@@ -44,6 +97,68 @@ export default function AgentBookingDetailPage() {
   }
 
   const totalTickets = booking.items.reduce((s, i) => s + i.quantity, 0);
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
+    booking.bookingReference,
+  )}`;
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      setError("");
+      const response = await fetch(`/api/bookings/${booking.bookingReference}/ticket`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to download ticket");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${booking.bookingReference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download ticket");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    setPrinting(true);
+    setError("");
+    const printWindow = window.open("", "PRINT", "height=800,width=1000");
+    if (!printWindow) {
+      setError("Please allow pop-ups to print the ticket");
+      setPrinting(false);
+      return;
+    }
+
+    const ticketHTML = buildTicketHtml({
+      bookingReference: booking.bookingReference,
+      visitDate: booking.visitDate,
+      customerName: booking.customerName,
+      customerMobile: booking.customerMobile,
+      totalAmount: booking.totalAmount,
+      qrCodeUrl,
+      bookingItems: booking.items.map((item) => ({
+        ticketName: item.ticketName,
+        quantity: item.quantity,
+        appliedPrice: item.appliedPrice,
+      })),
+    });
+
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      setPrinting(false);
+    }, 250);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,15 +214,6 @@ export default function AgentBookingDetailPage() {
                     Payment Status
                   </p>
                   <StatusBadge status={booking.paymentStatus} />
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CreditCard className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Payment Method
-                  </p>
-                  <StatusBadge status={booking.paymentMethod} />
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -172,7 +278,7 @@ export default function AgentBookingDetailPage() {
                 <tbody>
                   {booking.items.map((item) => (
                     <tr
-                      key={item.ticketCategoryId}
+                      key={item.ticketId}
                       className="border-b last:border-0"
                     >
                       <td className="px-4 py-3 font-medium text-foreground">
@@ -218,20 +324,14 @@ export default function AgentBookingDetailPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-foreground">
-                  {formatPrice(booking.totalAmount)}
+                          {formatPrice(Number(booking.totalAmount) || 0)}
                 </span>
               </div>
-              {booking.discountAmount > 0 && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount</span>
-                  <span>-{formatPrice(booking.discountAmount)}</span>
-                </div>
-              )}
               <div className="border-t pt-2">
                 <div className="flex justify-between text-base font-bold">
                   <span className="text-foreground">Total</span>
                   <span className="text-primary">
-                    {formatPrice(booking.finalAmount)}
+                    {formatPrice(Number(booking.totalAmount) || 0)}
                   </span>
                 </div>
               </div>
@@ -241,17 +341,21 @@ export default function AgentBookingDetailPage() {
           <div className="flex flex-col gap-2">
             <button
               type="button"
+              onClick={handleDownload}
+              disabled={downloading}
               className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
             >
               <Download className="h-4 w-4" />
-              Download Ticket
+              {downloading ? "Downloading..." : "Download Ticket"}
             </button>
             <button
               type="button"
+              onClick={handlePrint}
+              disabled={printing}
               className="flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
             >
               <Printer className="h-4 w-4" />
-              Print Ticket
+              {printing ? "Preparing..." : "Print Ticket"}
             </button>
           </div>
         </div>

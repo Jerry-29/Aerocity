@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import type { Metadata } from 'next';
+import Link from 'next/link';
 import {
   CheckCircle,
   CalendarDays,
@@ -17,39 +17,53 @@ export const metadata: Metadata = {
   description: "View and download your Aerocity Water Park e-ticket.",
 };
 
-// Mock ticket data for the public ticket view
-function getMockTicket(reference: string) {
-  return {
-    bookingReference: reference,
-    visitDate: "Sunday, March 15, 2026",
-    tickets: [
-      {
-        categoryId: 1,
-        categoryName: "Adult With Food",
-        quantity: 2,
-        unitPrice: 999,
-        totalPrice: 1998,
-      },
-      {
-        categoryId: 3,
-        categoryName: "Kid With Food",
-        quantity: 1,
-        unitPrice: 749,
-        totalPrice: 749,
-      },
-    ],
-    customerName: "Priya Sharma",
-    customerMobile: "9876543210",
-    totalAmount: 2747,
-    paymentStatus: "success" as const,
-  };
-}
-
 export default async function TicketPage(props: {
   params: Promise<{ reference: string }>;
 }) {
   const params = await props.params;
-  const ticket = getMockTicket(params.reference);
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ""}/api/bookings/${params.reference}`, {
+    // Revalidate on each request
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return (
+      <section className="py-10 lg:py-16">
+        <div className="mx-auto max-w-lg px-4 lg:px-8 text-center">
+          <h1 className="text-2xl font-bold text-foreground">Ticket Not Found</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please check your booking reference and try again.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              <Home className="h-4 w-4" />
+              Go to Homepage
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const json = await res.json();
+  const ticket = json?.data;
+  const items: Array<{
+    ticketId: number;
+    ticketName: string;
+    quantity: number;
+    appliedPrice: number;
+    totalPrice: number;
+  }> = Array.isArray(ticket?.items) ? ticket.items : [];
+  const totalAmount =
+    typeof ticket?.totalAmount === "number"
+      ? ticket.totalAmount
+      : items.reduce(
+          (s, i) => s + Number(i.appliedPrice || 0) * Number(i.quantity || 0),
+          0
+        );
 
   return (
     <section className="py-10 lg:py-16">
@@ -89,7 +103,7 @@ export default async function TicketPage(props: {
               <div>
                 <p className="text-xs text-muted-foreground">Visit Date</p>
                 <p className="text-sm font-semibold text-card-foreground">
-                  {ticket.visitDate}
+                  {new Date(ticket.visitDate).toLocaleDateString("en-IN")}
                 </p>
               </div>
             </div>
@@ -116,16 +130,16 @@ export default async function TicketPage(props: {
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Tickets
               </h3>
-              {ticket.tickets.map((t) => (
+              {items.map((t) => (
                 <div
-                  key={t.categoryId}
+                  key={`${t.ticketId}-${t.ticketName}`}
                   className="flex items-center justify-between py-1 text-sm"
                 >
                   <span className="text-card-foreground">
-                    {t.categoryName} x{t.quantity}
+                    {t.ticketName} x{t.quantity}
                   </span>
                   <span className="font-medium text-card-foreground">
-                    {formatPrice(t.totalPrice)}
+                    {formatPrice(t.totalPrice ?? Number(t.appliedPrice) * Number(t.quantity))}
                   </span>
                 </div>
               ))}
@@ -134,29 +148,33 @@ export default async function TicketPage(props: {
                   Total Paid
                 </span>
                 <span className="text-lg font-bold text-primary">
-                  {formatPrice(ticket.totalAmount)}
+                  {formatPrice(totalAmount)}
                 </span>
               </div>
             </div>
 
             <div className="rounded-lg bg-secondary/10 px-3 py-2 text-center text-xs font-medium text-secondary">
-              Payment Status: Confirmed
+              Payment Status: {ticket.paymentStatus}
             </div>
           </div>
         </div>
 
         {/* Actions */}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button
+          <a
+            href={`/api/bookings/${ticket.bookingReference}/ticket`}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted"
           >
-            <Printer className="h-4 w-4" />
-            Print
-          </button>
-          <button className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted">
             <Download className="h-4 w-4" />
-            Download
-          </button>
+            Download PDF
+          </a>
+          <Link
+            href="/"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted"
+          >
+            <Download className="h-4 w-4" />
+            Back to Home
+          </Link>
         </div>
 
         <div className="mt-6 text-center">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserPlus,
@@ -16,8 +16,25 @@ import {
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatPrice, validateMobile, validateEmail } from "@/lib/utils";
-import { mockAgents } from "@/lib/admin-data";
+import {
+  apiGetPaginated,
+  apiPost,
+  apiPut,
+  isPaginatedResponse,
+  isSuccessResponse,
+} from "@/lib/api-client";
 import type { Agent } from "@/lib/admin-types";
+
+type ApiAgent = {
+  id: number;
+  name: string;
+  mobile: string;
+  email: string | null;
+  status: Agent["status"];
+  totalBookings?: number;
+  totalRevenue?: number | string;
+  createdAt: string;
+};
 
 const columns: Column<Agent>[] = [
   { key: "name", label: "Name", sortable: true },
@@ -55,13 +72,44 @@ const emptyForm = {
 
 export default function AdminAgentsPage() {
   const router = useRouter();
-  const [agents, setAgents] = useState(mockAgents);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  const loadAgents = async () => {
+    setLoading(true);
+    try {
+      const res = await apiGetPaginated<ApiAgent>("/api/admin/users", 1, 50);
+      if (isPaginatedResponse<ApiAgent>(res)) {
+        const mapped: Agent[] = res.data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          mobile: u.mobile,
+          email: u.email || null,
+          status: u.status,
+          totalBookings: Number(u.totalBookings ?? 0),
+          totalRevenue: Number(u.totalRevenue ?? 0),
+          createdAt: u.createdAt,
+        }));
+        setAgents(mapped);
+      } else {
+        setError(res.message || "Failed to load agents");
+      }
+    } catch (e: any) {
+      setError(String(e?.message || "Failed to load agents"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAgents();
+  }, []);
 
   const handleCreate = async () => {
     setError("");
@@ -82,38 +130,51 @@ export default function AdminAgentsPage() {
       return;
     }
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const newAgent: Agent = {
-      id: Date.now(),
-      name: form.name,
-      mobile: form.mobile,
-      email: form.email || null,
-      status: "ACTIVE",
-      totalBookings: 0,
-      totalRevenue: 0,
-      createdAt: new Date().toISOString(),
-    };
-    setAgents((prev) => [newAgent, ...prev]);
-    setSaving(false);
-    setSuccessMsg(
-      `Agent "${form.name}" created successfully. Mobile: ${form.mobile}, Password: ${form.password}`
-    );
-    setForm(emptyForm);
+    try {
+      const res = await apiPost<any>("/api/admin/users", {
+        name: form.name.trim(),
+        phone: form.mobile.trim(),
+        email: form.email?.trim() || undefined,
+        password: form.password,
+        role: "AGENT",
+      });
+      if (!isSuccessResponse(res)) {
+        setError(res.message || res.error || "Failed to create agent");
+        return;
+      }
+      setSuccessMsg(
+        `Agent "${form.name}" created successfully. Mobile: ${form.mobile}, Password: ${form.password}`
+      );
+      setForm(emptyForm);
+      await loadAgents();
+    } catch (e: any) {
+      setError(String(e?.message || "Failed to create agent"));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const toggleStatus = (id: number) => {
-    setAgents((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        const next =
-          a.status === "ACTIVE"
-            ? "INACTIVE"
-            : a.status === "INACTIVE"
-            ? "ACTIVE"
-            : "ACTIVE";
-        return { ...a, status: next } as Agent;
-      })
-    );
+  const toggleStatus = async (id: number) => {
+    const agent = agents.find((a) => a.id === id);
+    if (!agent) return;
+    const next =
+      agent.status === "ACTIVE"
+        ? "INACTIVE"
+        : agent.status === "INACTIVE"
+        ? "ACTIVE"
+        : "ACTIVE";
+    try {
+      const res = await apiPut<any>(`/api/admin/users/${id}`, { status: next });
+      if (!isSuccessResponse(res)) {
+        setError(res.message || res.error || "Failed to update status");
+        return;
+      }
+      setAgents((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: next } : a)),
+      );
+    } catch (e: any) {
+      setError(String(e?.message || "Failed to update status"));
+    }
   };
 
   return (
@@ -141,6 +202,12 @@ export default function AdminAgentsPage() {
         </button>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading agents...
+        </div>
+      ) : (
       <DataTable
         columns={[
           ...columns,
@@ -182,6 +249,7 @@ export default function AdminAgentsPage() {
         onRowClick={(row) => router.push(`/admin/agents/${row.id}`)}
         emptyMessage="No agents found"
       />
+      )}
 
       {/* Create Agent Modal */}
       {showCreate && (

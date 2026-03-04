@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Star,
   CheckCircle2,
@@ -9,17 +9,52 @@ import {
   Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { mockAdminTestimonials } from "@/lib/admin-data";
+import { apiGet, apiPut, isSuccessResponse } from "@/lib/api-client";
 import type { AdminTestimonial } from "@/lib/admin-types";
 
 type FilterTab = "all" | "pending" | "approved" | "rejected";
 
 export default function AdminTestimonialsPage() {
-  const [testimonials, setTestimonials] = useState(mockAdminTestimonials);
+  const [testimonials, setTestimonials] = useState<AdminTestimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
+  const fetchAll = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await apiGet<any>("/api/admin/testimonials?page=1&pageSize=100");
+      if (!isSuccessResponse(res)) {
+        throw new Error(res.message || "Failed to load testimonials");
+      }
+      const payload = res.data;
+      const items: any[] = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      const mapped: AdminTestimonial[] = items.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        rating: Number(t.rating) || 0,
+        content: t.content || "",
+        isApproved: !!t.isApproved,
+        isFeatured: !!t.isFeatured,
+        displayOrder: Number(t.displayOrder) || 0,
+        createdAt: t.createdAt,
+      }));
+      setTestimonials(mapped);
+    } catch (e: any) {
+      setError(e?.message || "Failed to load testimonials");
+      setTestimonials([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchAll();
+  }, []);
+
   const filtered = testimonials.filter((t) => {
-    if (activeTab === "pending") return !t.isApproved && t.displayOrder === 0;
+    if (activeTab === "pending") return !t.isApproved && t.displayOrder >= 0;
     if (activeTab === "approved") return t.isApproved;
     if (activeTab === "rejected") return !t.isApproved && t.displayOrder < 0;
     return true;
@@ -29,28 +64,47 @@ export default function AdminTestimonialsPage() {
     (t) => !t.isApproved && t.displayOrder >= 0
   ).length;
 
-  const approve = (id: number) => {
-    setTestimonials((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, isApproved: true, displayOrder: 1 } : t
-      )
-    );
+  const approve = async (id: number) => {
+    const res = await apiPut(`/api/admin/testimonials/${id}`, {
+      isApproved: true,
+      displayOrder: 1,
+    });
+    if (isSuccessResponse(res)) {
+      setTestimonials((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, isApproved: true, displayOrder: 1 } : t,
+        ),
+      );
+    }
   };
 
-  const reject = (id: number) => {
-    setTestimonials((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, isApproved: false, displayOrder: -1 } : t
-      )
-    );
+  const reject = async (id: number) => {
+    const res = await apiPut(`/api/admin/testimonials/${id}`, {
+      isApproved: false,
+      displayOrder: -1,
+    });
+    if (isSuccessResponse(res)) {
+      setTestimonials((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, isApproved: false, displayOrder: -1 } : t,
+        ),
+      );
+    }
   };
 
-  const toggleFeatured = (id: number) => {
-    setTestimonials((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, isFeatured: !t.isFeatured } : t
-      )
-    );
+  const toggleFeatured = async (id: number) => {
+    const item = testimonials.find((t) => t.id === id);
+    if (!item) return;
+    const res = await apiPut(`/api/admin/testimonials/${id}`, {
+      isFeatured: !item.isFeatured,
+    });
+    if (isSuccessResponse(res)) {
+      setTestimonials((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, isFeatured: !t.isFeatured } : t,
+        ),
+      );
+    }
   };
 
   const tabs: { value: FilterTab; label: string; count?: number }[] = [
@@ -70,6 +124,17 @@ export default function AdminTestimonialsPage() {
           Review and manage customer testimonials
         </p>
       </div>
+
+      {loading && (
+        <div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+          Loading testimonials...
+        </div>
+      )}
+      {!loading && error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg bg-muted p-1">
@@ -96,7 +161,7 @@ export default function AdminTestimonialsPage() {
       </div>
 
       {/* Testimonial Cards */}
-      {filtered.length === 0 ? (
+      {!loading && filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-16 text-center">
           <Eye className="h-10 w-10 text-muted-foreground" />
           <p className="mt-3 text-sm text-muted-foreground">

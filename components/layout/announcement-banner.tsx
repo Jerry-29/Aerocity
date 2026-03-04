@@ -18,11 +18,13 @@ export function AnnouncementBanner({ announcements }: AnnouncementBannerProps) {
   return (
     <div className="relative flex items-center justify-center gap-2 bg-accent px-4 py-2 text-accent-foreground">
       <Megaphone className="hidden h-4 w-4 shrink-0 sm:block" />
-      <p className="text-center text-xs font-medium sm:text-sm">
-        <span className="font-semibold">{announcement.title}</span>
-        {" "}
-        {announcement.message}
-      </p>
+      <div
+        className="text-center text-xs font-medium sm:text-sm"
+        aria-live="polite"
+        dangerouslySetInnerHTML={{
+          __html: `<span class="font-semibold">${announcement.title}</span> ${announcement.message}`,
+        }}
+      />
       <button
         onClick={() => setDismissed(true)}
         className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-accent-foreground/10"

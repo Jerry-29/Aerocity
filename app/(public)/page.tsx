@@ -1,31 +1,34 @@
-import { HeroSection } from "@/components/home/hero-section";
+import { HeroDynamic } from "@/components/home/hero-dynamic";
 import { FeaturesSection } from "@/components/home/features-section";
 import { PopularRides } from "@/components/home/popular-rides";
 import { PricingPreview } from "@/components/home/pricing-preview";
-import { TestimonialsPreview } from "@/components/home/testimonials-preview";
+import { TestimonialsPreviewLoader } from "@/components/home/testimonials-loader";
+import { MediaGallery } from "@/components/home/media-gallery";
 import { CTASection } from "@/components/home/cta-section";
 import {
   fetchAttractions,
   fetchTicketCategories,
-  fetchTestimonials,
   fetchActiveOffer,
 } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function HomePage() {
-  const [attractions, categories, testimonials, offer] = await Promise.all([
+  const [attractions, categories, offer] = await Promise.all([
     fetchAttractions(),
     fetchTicketCategories(),
-    fetchTestimonials(),
     fetchActiveOffer(),
   ]);
 
   return (
     <>
-      <HeroSection />
+      <HeroDynamic />
       <FeaturesSection />
       <PopularRides attractions={attractions} />
       <PricingPreview categories={categories} offer={offer} />
-      <TestimonialsPreview testimonials={testimonials} />
+      <TestimonialsPreviewLoader />
+      <MediaGallery />
       <CTASection />
     </>
   );

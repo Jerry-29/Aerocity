@@ -13,6 +13,10 @@ export function TestimonialsPreview({ testimonials }: TestimonialsPreviewProps) 
   const [activeIndex, setActiveIndex] = useState(0);
   const visibleTestimonials = testimonials.slice(0, 6);
 
+  if (!visibleTestimonials || visibleTestimonials.length === 0) {
+    return null;
+  }
+
   const nextSlide = () => {
     setActiveIndex((prev) =>
       prev === visibleTestimonials.length - 1 ? 0 : prev + 1
@@ -100,7 +104,12 @@ export function TestimonialsPreview({ testimonials }: TestimonialsPreviewProps) 
   );
 }
 
-function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
+function TestimonialCard({ testimonial }: { testimonial: Testimonial | undefined }) {
+  if (!testimonial) return null;
+  const safeRating = Number((testimonial as any)?.rating) || 0;
+  const name = (testimonial as any)?.name || "";
+  const initial = name ? name.charAt(0) : "?";
+  const visitDate = (testimonial as any)?.visitDate || "";
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-primary-foreground/5 p-6 backdrop-blur-sm">
       <div className="flex gap-1">
@@ -108,7 +117,7 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
           <Star
             key={i}
             className={`h-4 w-4 ${
-              i < testimonial.rating
+              i < safeRating
                 ? "fill-accent text-accent"
                 : "text-primary-foreground/20"
             }`}
@@ -116,16 +125,16 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
         ))}
       </div>
       <p className="flex-1 text-sm leading-relaxed text-primary-foreground/90">
-        &ldquo;{testimonial.content}&rdquo;
+        &ldquo;{(testimonial as any)?.content || ""}&rdquo;
       </p>
       <div className="flex items-center gap-3 border-t border-primary-foreground/10 pt-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-bold text-secondary-foreground">
-          {testimonial.name.charAt(0)}
+          {initial}
         </div>
         <div>
-          <p className="text-sm font-semibold">{testimonial.name}</p>
+          <p className="text-sm font-semibold">{name}</p>
           <p className="text-xs text-primary-foreground/60">
-            Visited {testimonial.visitDate}
+            Visited {visitDate}
           </p>
         </div>
       </div>

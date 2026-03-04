@@ -1,37 +1,40 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { DataTablePagination } from "@/components/dashboard/data-table-pagination";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { formatPrice } from "@/lib/utils";
-import { mockBookings, paginateData } from "@/lib/admin-data";
-import type { AdminBooking } from "@/lib/admin-types";
+import { apiGet, isSuccessResponse } from "@/lib/api-client";
 
-const agentBookings = mockBookings.filter((b) => b.bookedByRole === "AGENT");
+interface AgentBookingRow {
+  id: number;
+  bookingReference: string;
+  customerName: string;
+  customerMobile: string;
+  visitDate: string;
+  totalAmount: number | string;
+  paymentStatus: string;
+  createdAt: string;
+}
 
-const columns: Column<AdminBooking>[] = [
+const columns: Column<AgentBookingRow>[] = [
   { key: "bookingReference", label: "Reference", sortable: true },
   { key: "customerName", label: "Customer", sortable: true },
   { key: "customerMobile", label: "Mobile" },
   { key: "visitDate", label: "Visit Date", sortable: true },
   {
-    key: "finalAmount",
+    key: "totalAmount",
     label: "Amount",
     sortable: true,
-    render: (row) => formatPrice(row.finalAmount),
+    render: (row) => formatPrice(Number(row.totalAmount) || 0),
   },
   {
     key: "paymentStatus",
     label: "Status",
     render: (row) => <StatusBadge status={row.paymentStatus} />,
-  },
-  {
-    key: "paymentMethod",
-    label: "Payment",
-    render: (row) => <StatusBadge status={row.paymentMethod} />,
   },
   {
     key: "createdAt",
@@ -48,23 +51,58 @@ export default function AgentBookingsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [bookings, setBookings] = useState<AgentBookingRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalElements: 0,
+  });
 
-  const filtered = useMemo(() => {
-    return agentBookings.filter((b) => {
-      if (status !== "ALL" && b.paymentStatus !== status) return false;
-      if (dateFrom && b.visitDate < dateFrom) return false;
-      if (dateTo && b.visitDate > dateTo) return false;
-      if (
-        search &&
-        !b.bookingReference.toLowerCase().includes(search.toLowerCase()) &&
-        !b.customerName.toLowerCase().includes(search.toLowerCase())
-      )
-        return false;
-      return true;
-    });
-  }, [search, status, dateFrom, dateTo]);
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const paginated = paginateData(filtered, page, 20);
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: "20",
+        });
+
+        if (status !== "ALL") params.set("status", status);
+        if (dateFrom) params.set("startDate", dateFrom);
+        if (dateTo) params.set("endDate", dateTo);
+        if (search.trim()) params.set("search", search.trim());
+
+        const response = await apiGet<any>(`/api/admin/bookings?${params.toString()}`);
+        if (!isSuccessResponse(response)) {
+          throw new Error(response.message || "Failed to load bookings");
+        }
+
+        setBookings(Array.isArray(response.data) ? response.data : []);
+        const meta = (response as any).pagination;
+        setPagination({
+          currentPage: meta?.currentPage || page,
+          totalPages: meta?.totalPages || 1,
+          totalElements: meta?.totalElements || 0,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load bookings");
+        setBookings([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 1,
+          totalElements: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [page, status, dateFrom, dateTo, search]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -145,18 +183,18 @@ export default function AgentBookingsPage() {
 
       <DataTable
         columns={columns}
-        data={paginated.content}
+        data={bookings}
         keyField="id"
         onRowClick={(row) =>
           router.push(`/agent/bookings/${row.bookingReference}`)
         }
-        emptyMessage="No bookings match your filters"
+        emptyMessage={loading ? "Loading bookings..." : error || "No bookings match your filters"}
       />
 
       <DataTablePagination
-        currentPage={paginated.currentPage}
-        totalPages={paginated.totalPages}
-        totalElements={paginated.totalElements}
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        totalElements={pagination.totalElements}
         onPageChange={setPage}
       />
     </div>

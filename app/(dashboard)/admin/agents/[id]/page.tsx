@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   User,
@@ -16,18 +16,46 @@ import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { formatPrice } from "@/lib/utils";
-import { mockAgents, mockBookings } from "@/lib/admin-data";
-import type { AdminBooking } from "@/lib/admin-types";
+import { apiGet, apiPut, isSuccessResponse } from "@/lib/api-client";
 
-const bookingCols: Column<AdminBooking>[] = [
+type AgentDetail = {
+  id: number;
+  name: string;
+  email: string | null;
+  mobile: string;
+  role: "AGENT";
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  createdAt: string;
+};
+
+type AgentBooking = {
+  id: number;
+  bookingReference: string;
+  visitDate: string;
+  customerName: string;
+  totalAmount: number | string;
+  paymentStatus: string;
+  createdAt: string;
+};
+
+type AgentDetailResponse = {
+  agent: AgentDetail;
+  stats: {
+    totalBookings: number;
+    totalRevenue: number | string;
+  };
+  recentBookings: AgentBooking[];
+};
+
+const bookingCols: Column<AgentBooking>[] = [
   { key: "bookingReference", label: "Reference", sortable: true },
   { key: "customerName", label: "Customer", sortable: true },
   { key: "visitDate", label: "Visit Date", sortable: true },
   {
-    key: "finalAmount",
+    key: "totalAmount",
     label: "Amount",
     sortable: true,
-    render: (row) => formatPrice(row.finalAmount),
+    render: (row) => formatPrice(Number(row.totalAmount) || 0),
   },
   {
     key: "paymentStatus",
@@ -40,15 +68,81 @@ export default function AdminAgentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const agentId = Number(params.id);
-  const agent = mockAgents.find((a) => a.id === agentId);
-
+  const [agent, setAgent] = useState<AgentDetail | null>(null);
+  const [stats, setStats] = useState<AgentDetailResponse["stats"] | null>(null);
+  const [agentBookings, setAgentBookings] = useState<AgentBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [targetStatus, setTargetStatus] = useState<string>("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const hasFetchedRef = useRef(false);
 
-  if (!agent) {
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const fetchAgent = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await apiGet<AgentDetailResponse>(
+          `/api/admin/agents/${agentId}`,
+        );
+        if (!isSuccessResponse(response)) {
+          throw new Error(response.message || "Failed to load agent");
+        }
+        setAgent(response.data.agent);
+        setStats(response.data.stats);
+        setAgentBookings(response.data.recentBookings || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load agent");
+        setAgent(null);
+        setStats(null);
+        setAgentBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!Number.isNaN(agentId)) {
+      fetchAgent();
+    }
+  }, [agentId]);
+
+  const handleUpdateStatus = async () => {
+    if (!agent) return;
+    setUpdatingStatus(true);
+    try {
+      const response = await apiPut(`/api/admin/users/${agent.id}`, {
+        status: targetStatus,
+      });
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.message || "Failed to update status");
+      }
+      setAgent((prev) => (prev ? { ...prev, status: targetStatus as any } : prev));
+      setShowStatusDialog(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  if (loading && !agent) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg font-semibold text-foreground">Agent not found</p>
+        <p className="text-lg font-semibold text-foreground">Loading agent...</p>
+      </div>
+    );
+  }
+
+  if (!agent && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <p className="text-lg font-semibold text-foreground">
+          {error || "Agent not found"}
+        </p>
         <button
           type="button"
           onClick={() => router.push("/admin/agents")}
@@ -60,11 +154,8 @@ export default function AdminAgentDetailPage() {
     );
   }
 
-  const agentBookings = mockBookings.filter(
-    (b) => b.agentId === agent.id
-  );
-
   return (
+    !agent ? null : (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
@@ -88,6 +179,12 @@ export default function AdminAgentDetailPage() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {/* Agent Info */}
       <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -168,12 +265,12 @@ export default function AdminAgentDetailPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Total Bookings"
-          value={String(agent.totalBookings)}
+          value={String(stats?.totalBookings ?? 0)}
           icon={CalendarCheck}
         />
         <StatCard
           title="Total Revenue"
-          value={formatPrice(agent.totalRevenue)}
+          value={formatPrice(Number(stats?.totalRevenue) || 0)}
           icon={IndianRupee}
         />
         <StatCard
@@ -199,7 +296,9 @@ export default function AdminAgentDetailPage() {
           onRowClick={(row) =>
             router.push(`/admin/bookings/${row.bookingReference}`)
           }
-          emptyMessage="No bookings found for this agent"
+          emptyMessage={
+            loading ? "Loading bookings..." : "No bookings found for this agent"
+          }
         />
       </div>
 
@@ -209,11 +308,11 @@ export default function AdminAgentDetailPage() {
         description={`Are you sure you want to set ${agent.name}'s status to ${targetStatus}?`}
         confirmLabel={`Set ${targetStatus}`}
         variant={targetStatus === "SUSPENDED" ? "destructive" : "default"}
-        onConfirm={() => {
-          setShowStatusDialog(false);
-        }}
+        onConfirm={handleUpdateStatus}
         onCancel={() => setShowStatusDialog(false)}
+        loading={updatingStatus}
       />
     </div>
+    )
   );
 }

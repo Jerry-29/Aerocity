@@ -20,6 +20,11 @@ export function StepDateTickets() {
 
   const [dateError, setDateError] = useState("");
 
+  const toLocalYMD = (d: Date) => {
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().split("T")[0];
+  };
+
   const getTicketQty = (catId: number) => {
     return formData.tickets.find((t) => t.categoryId === catId)?.quantity || 0;
   };
@@ -27,7 +32,8 @@ export function StepDateTickets() {
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val) {
-      const selected = new Date(val + "T00:00:00");
+      // Set to local noon to avoid timezone shifting to previous day
+      const selected = new Date(val + "T12:00:00");
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (selected < today) {
@@ -87,11 +93,7 @@ export function StepDateTickets() {
             id="visit-date"
             type="date"
             min={minDate}
-            value={
-              formData.visitDate
-                ? formData.visitDate.toISOString().split("T")[0]
-                : ""
-            }
+            value={formData.visitDate ? toLocalYMD(formData.visitDate) : ""}
             onChange={handleDateChange}
             className="w-full max-w-xs rounded-lg border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
           />
@@ -101,19 +103,30 @@ export function StepDateTickets() {
         </div>
 
         {/* Offer Notice */}
-        {offer && offer.isActive && (
-          <div className="mb-6 flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {offer.name} is live!
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {offer.description} Special prices already applied below.
-              </p>
+        {offer && offer.isActive && (() => {
+          const raw = offer.description || "";
+          const match = raw.match(/\[PERCENT:([0-9]+(\.[0-9]+)?)\]/);
+          const pct = match ? parseFloat(match[1]) : null;
+          const cleaned = raw.replace(/\s*\[PERCENT:[^\]]+\]\s*/g, "").trim();
+          const body = pct !== null
+            ? `${pct}% discount on all tickets. Special prices already applied below.`
+            : cleaned
+              ? `${cleaned} Special prices already applied below.`
+              : "Special prices already applied below.";
+          return (
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {offer.name} is live!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {body}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Ticket Categories */}
         <div className="flex flex-col gap-4">
