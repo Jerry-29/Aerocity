@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
+import { announcements as fallbackAnnouncements } from "@/lib/data";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,9 +63,22 @@ export async function GET(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("Get announcements error:", error);
-    return NextResponse.json(
-      createErrorResponse("Failed to retrieve announcements", error.message),
-      { status: 500 },
-    );
+    try {
+      const filtered = fallbackAnnouncements
+        .filter((a) => a.isActive)
+        .map((a) => ({
+          ...a,
+          content: a.message,
+        }));
+      return NextResponse.json(
+        createSuccessResponse("Announcements retrieved (fallback)", filtered),
+        { status: 200 },
+      );
+    } catch (e: any) {
+      return NextResponse.json(
+        createErrorResponse("Failed to retrieve announcements", e?.message || "Unknown error"),
+        { status: 500 },
+      );
+    }
   }
 }

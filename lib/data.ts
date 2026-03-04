@@ -7,6 +7,7 @@ import type {
   GalleryItem,
 } from "./types";
 import { prisma } from "@/lib/db";
+import { sql } from "@/lib/neon";
 
 export const ticketCategories: TicketCategory[] = [
   {
@@ -292,6 +293,44 @@ export const galleryItems: GalleryItem[] = [
 // Async mock data fetchers (ready to swap with real API calls)
 export async function fetchTicketCategories(): Promise<TicketCategory[]> {
   try {
+    if (sql) {
+      const tickets = await (sql as any)`
+        SELECT "id","name","slug","description","customerPrice","createdAt"
+        FROM "Ticket"
+        WHERE "isActive" = true
+        ORDER BY "createdAt" DESC
+      `;
+      const offerPrices = await (sql as any)`
+        SELECT otp."ticketId" AS "ticketId", otp."offerPrice" AS "offerPrice"
+        FROM "OfferTicketPrice" AS otp
+        JOIN "Offer" o ON o."id" = otp."offerId"
+        WHERE o."isActive" = true
+          AND o."startDate" <= NOW()
+          AND o."endDate" >= NOW()
+      `;
+      const byTicket = new Map<number, number>();
+      for (const row of offerPrices as any[]) {
+        const tid = Number(row.ticketId);
+        const val = Number(row.offerPrice);
+        const prev = byTicket.get(tid);
+        if (prev === undefined || val < prev) byTicket.set(tid, val);
+      }
+      return (tickets as any[]).map((t) => {
+        const fallback = ticketCategories.find((x) => x.slug === t.slug);
+        return {
+          id: Number(t.id),
+          name: t.name,
+          slug: t.slug,
+          description: t.description || "",
+          basePrice: Number(t.customerPrice),
+          offerPrice: byTicket.get(Number(t.id)) ?? null,
+          includes:
+            fallback?.includes && fallback.includes.length > 0
+              ? fallback.includes
+              : ["All rides and attractions access"],
+        } satisfies TicketCategory;
+      });
+    }
     const now = new Date();
     const [tickets, activeOffers] = await Promise.all([
       prisma.ticket.findMany({
