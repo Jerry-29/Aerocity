@@ -1,6 +1,4 @@
-import { neon, neonConfig } from "@neondatabase/serverless";
-
-neonConfig.fetchConnectionCache = true;
+import { neon } from "@neondatabase/serverless";
 
 function sanitize(url: string) {
   try {
