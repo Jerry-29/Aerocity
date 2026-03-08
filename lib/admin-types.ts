@@ -61,7 +61,7 @@ export interface AdminBooking {
   customerEmail: string;
   isValidated: boolean;
   validatedAt: string | null;
-  bookedByRole: "CUSTOMER" | "AGENT";
+  bookedByRole: "CUSTOMER" | "AGENT" | "ADMIN";
   agentId: number | null;
   agentName: string | null;
   razorpayOrderId: string | null;

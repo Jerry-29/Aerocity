@@ -2,11 +2,27 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Shield, Lock, CreditCard, Loader2 } from "lucide-react";
+import { ArrowLeft, Shield, Lock, CreditCard, Loader2, CheckCircle2 } from "lucide-react";
 import { useBooking } from "@/lib/booking-context";
 import { formatPrice } from "@/lib/utils";
 import { apiPost } from "@/lib/api-client";
 import { toast } from "sonner";
+
+// Non-closable processing modal
+function ProcessingModal({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-sm rounded-2xl border bg-card p-8 shadow-2xl text-center">
+        <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-primary" />
+        <h3 className="mb-2 text-xl font-bold text-foreground">Processing...</h3>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <p className="mt-6 text-xs font-medium text-secondary animate-pulse">
+          Please do not close or refresh this page.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 type RazorpayResponse = {
   razorpay_payment_id: string;
@@ -24,6 +40,7 @@ export function StepPayment() {
   const router = useRouter();
   const { formData, ticketSelections, setStep } = useBooking();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState("");
   const [isInitializing, setIsInitializing] = useState(true);
   const [bookingReference, setBookingReference] = useState<string>("");
   const [razorpayOrderId, setRazorpayOrderId] = useState<string>("");
@@ -39,17 +56,17 @@ export function StepPayment() {
   const displayAmount =
     bookingTotalAmount > 0 ? bookingTotalAmount : calculatedTotal;
 
-  // Load Razorpay script on component mount
+  // Load payment script on component mount
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     script.onload = () => {
       setIsInitializing(false);
-      console.log("✅ Razorpay script loaded successfully");
+      console.log("✅ Payment system loaded successfully");
     };
     script.onerror = () => {
-      console.error("❌ Failed to load Razorpay script");
+      console.error("❌ Failed to load payment system");
       toast.error("Failed to load payment system. Please refresh.");
       setIsInitializing(false);
     };
@@ -65,6 +82,7 @@ export function StepPayment() {
   const handlePayment = async () => {
     try {
       setIsProcessing(true);
+      setProcessingMessage("Creating your booking...");
       console.log("🚀 Starting payment process...");
 
       // Step 1: Create booking via API
@@ -95,7 +113,7 @@ export function StepPayment() {
         throw new Error("Razorpay SDK not loaded");
       }
 
-      const razorpay = new window.Razorpay({
+      const paymentGateway = new window.Razorpay({
         key:
           process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
           process.env.RAZORPAY_KEY_ID,
@@ -110,6 +128,8 @@ export function StepPayment() {
           contact: formData.customerMobile,
         },
         handler: async (response: RazorpayResponse) => {
+          setIsProcessing(true);
+          setProcessingMessage("Verifying payment and generating your ticket...");
           await handlePaymentSuccess(
             response,
             (booking as any).bookingReference,
@@ -120,18 +140,22 @@ export function StepPayment() {
           ondismiss: () => {
             console.log("❌ Payment modal closed");
             setIsProcessing(false);
+            setProcessingMessage("");
             toast.error("Payment cancelled. Please try again.");
           },
         },
       });
 
-      console.log("🎯 Opening Razorpay payment modal...");
+      console.log("🎯 Opening payment modal...");
       setRazorpayOrderId((booking as any).razorpayOrderId);
-      razorpay.open();
+      setIsProcessing(false); // Hide our modal while gateway is open
+      setProcessingMessage("");
+      paymentGateway.open();
     } catch (error: any) {
       console.error("❌ Payment error:", error);
       toast.error(error.message || "Payment failed. Please try again.");
       setIsProcessing(false);
+      setProcessingMessage("");
     }
   };
 
@@ -142,6 +166,7 @@ export function StepPayment() {
   ) => {
     try {
       console.log("✅ Payment successful! Verifying with server...");
+      // Already set isProcessing and processingMessage in handler
       console.log("📦 Payment response:", response);
 
       // Step 3: Verify payment with backend
@@ -211,17 +236,18 @@ export function StepPayment() {
       console.error("❌ Verification error:", error);
       toast.error(error.message || "Payment verification failed");
       setIsProcessing(false);
+      setProcessingMessage("");
     }
   };
 
   return (
     <div className="mx-auto max-w-lg">
+      {isProcessing && <ProcessingModal message={processingMessage} />}
       <h2 className="mb-2 text-xl font-semibold text-foreground sm:text-2xl">
         Payment
       </h2>
       <p className="mb-8 text-sm text-muted-foreground">
-        Complete your payment to confirm your booking. Your payment is secured
-        and processed by Razorpay.
+        Complete your payment to confirm your booking. Your payment is secured.
       </p>
 
       {/* Payment Summary Card */}
@@ -284,10 +310,7 @@ export function StepPayment() {
         <Shield className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
         <div className="text-xs text-muted-foreground">
           <p className="mb-1 font-medium text-foreground">🔒 Secure Payment</p>
-          <p>
-            Your payment is processed securely via Razorpay. We do not store any
-            card details. All transactions are encrypted and PCI DSS compliant.
-          </p>
+          <p>We do not store any card details. All transactions are encrypted and PCI DSS compliant.</p>
         </div>
       </div>
 
@@ -310,7 +333,7 @@ export function StepPayment() {
         ) : (
           <>
             <Lock className="h-4 w-4" />
-            Pay {formatPrice(displayAmount)} with Razorpay
+            Pay {formatPrice(displayAmount)}
           </>
         )}
       </button>

@@ -122,62 +122,63 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Run notifications server-side so they don't depend on client connectivity.
-    (async () => {
-      try {
-        const booking = await prisma.booking.findUnique({
-          where: { bookingReference: result.bookingReference },
+    // Run notifications server-side
+    const booking = await prisma.booking.findUnique({
+      where: { bookingReference: result.bookingReference },
+      include: {
+        bookingItems: {
           include: {
-            bookingItems: {
-              include: {
-                ticket: {
-                  select: { name: true },
-                },
-              },
+            ticket: {
+              select: { name: true },
             },
           },
+        },
+      },
+    });
+
+    if (booking) {
+      let ticketUrl: string | undefined;
+      try {
+        const pdfBuffer = await generateTicketPDF({
+          bookingReference: booking.bookingReference,
+          customerName: booking.customerName,
+          customerMobile: booking.customerMobile,
+          visitDate: booking.visitDate,
+          totalAmount: booking.totalAmount.toString(),
+          tickets: booking.bookingItems.map((item: {
+            ticket: { name: string };
+            quantity: number;
+            appliedPrice: any;
+            totalPrice: any;
+          }) => ({
+            name: item.ticket.name,
+            quantity: item.quantity,
+            unitPrice: Number(item.appliedPrice),
+            lineTotal: Number(item.totalPrice),
+          })),
         });
 
-        if (!booking) return;
-
-        let ticketUrl: string | undefined;
-        try {
-          const pdfBuffer = await generateTicketPDF({
-            bookingReference: booking.bookingReference,
-            customerName: booking.customerName,
-            customerMobile: booking.customerMobile,
-            visitDate: booking.visitDate,
-            totalAmount: booking.totalAmount.toString(),
-            tickets: booking.bookingItems.map((item: {
-              ticket: { name: string };
-              quantity: number;
-              appliedPrice: any;
-              totalPrice: any;
-            }) => ({
-              name: item.ticket.name,
-              quantity: item.quantity,
-              unitPrice: Number(item.appliedPrice),
-              lineTotal: Number(item.totalPrice),
-            })),
-          });
-
-          ticketUrl = await uploadTicket(pdfBuffer, booking.bookingReference);
-        } catch (pdfError) {
-          console.error("Ticket PDF generation/upload failed:", pdfError);
-        }
-
-        await sendWhatsAppMessage({
-          phone: booking.customerMobile,
-          name: booking.customerName,
-          bookingId: booking.bookingReference,
-          date: new Date(booking.visitDate).toISOString().split("T")[0],
-          ticketsCount: booking.bookingItems.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
-          ticketUrl,
-        });
-      } catch (notificationError) {
-        console.error("Post-payment WhatsApp notification failed:", notificationError);
+        ticketUrl = await uploadTicket(pdfBuffer, booking.bookingReference);
+      } catch (pdfError) {
+        console.error("Ticket PDF generation/upload failed:", pdfError);
       }
-    })();
+
+      // We still do WhatsApp in background to not block the main response too long if it's slow
+      void (async () => {
+        try {
+          await sendWhatsAppMessage({
+            phone: booking.customerMobile,
+            name: booking.customerName,
+            bookingId: booking.bookingReference,
+            date: new Date(booking.visitDate).toISOString().split("T")[0],
+            ticketsCount: booking.bookingItems.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
+            ticketUrl,
+          });
+        } catch (notificationError) {
+          console.error("Post-payment WhatsApp notification failed:", notificationError);
+        }
+      })();
+    }
 
     return NextResponse.json(
       createSuccessResponse(

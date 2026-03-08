@@ -43,6 +43,20 @@ export function StepDetails() {
     }
   };
 
+  // Navigation
+  const handleBack = () => {
+    updateCustomerDetails(name.trim(), mobile.trim(), email.trim());
+    setStep(1);
+    if (typeof window !== "undefined") {
+      const el = document.getElementById("booking-flow");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
       <div className="flex-1">
@@ -151,7 +165,7 @@ export function StepDetails() {
         {/* Navigation */}
         <div className="mt-8 flex gap-4">
           <button
-            onClick={() => setStep(2)}
+            onClick={handleBack}
             className="inline-flex items-center gap-2 rounded-lg border px-6 py-3 text-sm font-medium text-muted-foreground transition-all hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />

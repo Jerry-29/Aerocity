@@ -4,7 +4,7 @@ import { BookingLoader } from "@/components/booking/booking-loader";
 export const metadata: Metadata = {
   title: "Book Tickets",
   description:
-    "Book your tickets online for Aerocity Water Park. Select date, choose ticket type, and pay securely with Razorpay.",
+    "Book your tickets online for Aerocity Water Park. Select date, choose ticket type, and pay securely.",
 };
 
 export default async function BookingPage() {

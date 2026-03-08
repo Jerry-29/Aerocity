@@ -1,11 +1,103 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ArrowRight, Info } from "lucide-react";
+import { CalendarDays, ArrowRight, Info, Ticket } from "lucide-react";
 import { useBooking } from "@/lib/booking-context";
 import { TicketCounter } from "./ticket-counter";
 import { PriceSummary } from "./price-summary";
-import { formatPrice } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+
+function TicketItem({
+  cat,
+  qty,
+  hasOffer,
+  onUpdate,
+}: {
+  cat: any;
+  qty: number;
+  hasOffer: boolean;
+  onUpdate: (qty: number) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group relative flex flex-col overflow-hidden rounded-xl border transition-all duration-300 hover:border-primary/50 hover:shadow-md sm:flex-row",
+        qty > 0 ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "bg-card border-border"
+      )}
+    >
+      {/* Ticket Punch Holes (Visual Only) */}
+      <div className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rounded-full border bg-background sm:block" />
+      <div className="absolute -right-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rounded-full border bg-background sm:block" />
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col p-4 sm:pr-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-300",
+              qty > 0 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+            )}>
+              <Ticket className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-card-foreground">
+                {cat.name}
+              </h3>
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">
+                Admission Ticket
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+          {cat.description}
+        </p>
+
+        <div className="mt-4 flex items-baseline gap-1.5">
+          {hasOffer ? (
+            <>
+              <span className="text-xl font-black text-primary">
+                {formatPrice(cat.offerPrice!)}
+              </span>
+              <span className="text-xs text-muted-foreground line-through decoration-destructive/50">
+                {formatPrice(cat.basePrice)}
+              </span>
+              <div className="ml-1 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[9px] font-bold text-destructive uppercase">
+                Offer
+              </div>
+            </>
+          ) : (
+            <span className="text-xl font-black text-primary">
+              {formatPrice(cat.basePrice)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Dashed Separator */}
+      <div className="mx-4 border-t border-dashed border-border sm:mx-0 sm:my-4 sm:border-l sm:border-t-0" />
+
+      {/* Control Area */}
+      <div className="flex items-center justify-center p-4 sm:w-40 sm:bg-muted/30">
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            Quantity
+          </span>
+          <TicketCounter
+            value={qty}
+            onChange={onUpdate}
+          />
+          {qty > 0 && (
+            <p className="animate-in fade-in slide-in-from-top-1 text-[10px] font-bold text-primary">
+              Total: {formatPrice((hasOffer ? cat.offerPrice : cat.basePrice) * qty)}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function StepDateTickets() {
   const {
@@ -129,48 +221,16 @@ export function StepDateTickets() {
         })()}
 
         {/* Ticket Categories */}
-        <div className="flex flex-col gap-4">
-          {categories.map((cat) => {
-            const hasOffer = offer?.isActive && cat.offerPrice;
-            return (
-              <div
-                key={cat.id}
-                className="flex flex-col gap-4 rounded-xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-card-foreground">
-                    {cat.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {cat.description}
-                  </p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    {hasOffer ? (
-                      <>
-                        <span className="text-lg font-bold text-primary">
-                          {formatPrice(cat.offerPrice!)}
-                        </span>
-                        <span className="text-sm text-muted-foreground line-through">
-                          {formatPrice(cat.basePrice)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-lg font-bold text-primary">
-                        {formatPrice(cat.basePrice)}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      / person
-                    </span>
-                  </div>
-                </div>
-                <TicketCounter
-                  value={getTicketQty(cat.id)}
-                  onChange={(qty) => updateTicket(cat.id, qty)}
-                />
-              </div>
-            );
-          })}
+        <div className="flex flex-col gap-6">
+          {categories.map((cat) => (
+            <TicketItem
+              key={cat.id}
+              cat={cat}
+              qty={getTicketQty(cat.id)}
+              hasOffer={!!(offer?.isActive && cat.offerPrice)}
+              onUpdate={(qty) => updateTicket(cat.id, qty)}
+            />
+          ))}
         </div>
 
         {/* Continue Button */}

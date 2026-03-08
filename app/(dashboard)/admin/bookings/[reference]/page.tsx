@@ -13,11 +13,14 @@ import {
   ShieldCheck,
   XCircle,
   CheckCircle2,
+  Printer,
+  Download,
 } from "lucide-react";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { ConfirmDialog } from "@/components/dashboard/confirm-dialog";
 import { formatPrice } from "@/lib/utils";
 import { apiGet, apiPost, apiPut, isSuccessResponse } from "@/lib/api-client";
+import { buildTicketHtml } from "@/lib/ticket-template";
 
 export default function AdminBookingDetailPage() {
   const params = useParams();
@@ -29,6 +32,8 @@ export default function AdminBookingDetailPage() {
 
   const [showCancel, setShowCancel] = useState(false);
   const [showValidate, setShowValidate] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -91,6 +96,70 @@ export default function AdminBookingDetailPage() {
       </div>
     );
   }
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      setError("");
+      const response = await fetch(`/api/bookings/${booking.bookingReference}/ticket`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to download ticket");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${booking.bookingReference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download ticket");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrint = () => {
+    setPrinting(true);
+    setError("");
+    const printWindow = window.open("", "PRINT", "height=800,width=1000");
+    if (!printWindow) {
+      setError("Please allow pop-ups to print the ticket");
+      setPrinting(false);
+      return;
+    }
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(
+      booking.bookingReference,
+    )}`;
+
+    const ticketHTML = buildTicketHtml({
+      bookingReference: booking.bookingReference,
+      visitDate: booking.visitDate,
+      customerName: booking.customerName,
+      customerMobile: booking.customerMobile,
+      totalAmount: booking.totalAmount,
+      qrCodeUrl,
+      bookingItems: (booking?.items || []).map((item: any) => ({
+        ticketName: item.ticketName,
+        quantity: item.quantity,
+        unitPrice: item.appliedPrice,
+        appliedPrice: item.totalPrice,
+      })),
+    });
+
+    printWindow.document.write(ticketHTML);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+      setPrinting(false);
+    }, 250);
+  };
 
   const paymentMethod =
     booking.razorpayPaymentId || booking.razorpayOrderId ? "ONLINE" : "OFFLINE";
@@ -308,7 +377,7 @@ export default function AdminBookingDetailPage() {
           {(booking.razorpayOrderId || booking.razorpayPaymentId) && (
             <div className="rounded-xl border bg-card p-5 shadow-sm">
               <h3 className="mb-3 text-base font-semibold text-foreground">
-                Razorpay Details
+                Payment Details
               </h3>
               <div className="flex flex-col gap-2 text-xs">
                 {booking.razorpayOrderId && (
@@ -333,6 +402,28 @@ export default function AdminBookingDetailPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
+            {booking.paymentStatus === "PAID" && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  disabled={printing}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Printer className="h-4 w-4" />
+                  {printing ? "Preparing..." : "Print Ticket"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" />
+                  {downloading ? "Downloading..." : "Download PDF"}
+                </button>
+              </>
+            )}
             {!booking.isValidated && booking.paymentStatus === "PAID" && (
               <button
                 type="button"

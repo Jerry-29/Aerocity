@@ -107,10 +107,11 @@ function ConfirmationContent() {
       customerMobile: booking.customerMobile,
       totalAmount: booking.totalAmount,
       qrCodeUrl,
-      bookingItems: (booking?.bookingItems || []).map((item: any) => ({
+      bookingItems: (booking?.items || []).map((item: any) => ({
         ticketName: item.ticketName,
         quantity: item.quantity,
-        appliedPrice: item.appliedPrice,
+        unitPrice: item.appliedPrice,
+        appliedPrice: item.totalPrice,
       })),
     });
     printWindow.document.write(ticketHTML);
@@ -137,10 +138,11 @@ function ConfirmationContent() {
       totalAmount: booking.totalAmount,
       qrCodeUrl,
       includePrintButton: true,
-      bookingItems: (booking?.bookingItems || []).map((item: any) => ({
+      bookingItems: (booking?.items || []).map((item: any) => ({
         ticketName: item.ticketName,
         quantity: item.quantity,
-        appliedPrice: item.appliedPrice,
+        unitPrice: item.appliedPrice,
+        appliedPrice: item.totalPrice,
       })),
     });
     printWindow.document.write(ticketHTML);
@@ -212,9 +214,9 @@ function ConfirmationContent() {
               Tickets
             </h3>
             <div className="flex flex-col gap-2">
-              {booking?.bookingItems?.map((item: any) => (
+              {booking?.items?.map((item: any) => (
                 <div
-                  key={item.id}
+                  key={item.ticketId}
                   className="flex items-center justify-between text-sm"
                 >
                   <span className="text-card-foreground">
