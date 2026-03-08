@@ -21,7 +21,16 @@ interface AgentBookingRow {
 }
 
 const columns: Column<AgentBookingRow>[] = [
-  { key: "bookingReference", label: "Reference", sortable: true },
+  {
+    key: "bookingReference",
+    label: "Reference",
+    sortable: true,
+    render: (row) => (
+      <span className="block max-w-[120px] truncate font-mono text-xs font-bold sm:max-w-none sm:text-sm">
+        {row.bookingReference}
+      </span>
+    ),
+  },
   { key: "customerName", label: "Customer", sortable: true },
   { key: "customerMobile", label: "Mobile" },
   { key: "visitDate", label: "Visit Date", sortable: true },

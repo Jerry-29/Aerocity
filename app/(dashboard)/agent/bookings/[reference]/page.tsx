@@ -171,8 +171,8 @@ export default function AgentBookingDetailPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <h1 className="break-all text-lg font-bold text-foreground sm:text-xl">
             {booking.bookingReference}
           </h1>
           <p className="text-sm text-muted-foreground">

@@ -172,7 +172,7 @@ function ConfirmationContent() {
         <div className="ticket-to-print">
           <div className="mb-6 rounded-xl border-2 border-secondary bg-secondary/5 p-6 text-center">
             <p className="text-xs text-muted-foreground">Booking Reference</p>
-            <p className="mt-1 text-2xl font-bold tracking-wider text-primary">
+            <p className="mt-1 break-all text-lg font-bold tracking-wider text-primary sm:text-2xl">
               {booking.bookingReference}
             </p>
           </div>

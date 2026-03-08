@@ -88,3 +88,16 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.6);
 }
+
+/* Fix for date inputs on iOS */
+input[type="date"] {
+  min-height: 2.5rem;
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
