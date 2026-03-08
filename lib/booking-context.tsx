@@ -26,8 +26,15 @@ export function useBooking() {
   return ctx;
 }
 
+const getTomorrow = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(12, 0, 0, 0); // Use noon to avoid TZ issues
+  return tomorrow;
+};
+
 const initialFormData: BookingFormData = {
-  visitDate: null,
+  visitDate: getTomorrow(),
   tickets: [],
   customerName: "",
   customerMobile: "",

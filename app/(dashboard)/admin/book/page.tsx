@@ -77,8 +77,14 @@ const STEPS = [
 export default function AdminBookPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const tomorrowStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  }, []);
+
   const [step, setStep] = useState(1);
-  const [visitDate, setVisitDate] = useState("");
+  const [visitDate, setVisitDate] = useState(tomorrowStr);
   const [tickets, setTickets] = useState<Record<number, number>>({});
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -345,11 +351,11 @@ export default function AdminBookPage() {
           </p>
 
           <div className="mt-8 overflow-hidden rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4">
-            <div className="mb-4 flex flex-col items-center">
+            <div className="mb-4 flex flex-col items-center px-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                 Booking Reference
               </p>
-              <p className="mt-1 text-2xl font-black font-mono text-primary">
+              <p className="mt-1 break-all text-lg font-black font-mono text-primary sm:text-2xl">
                 {bookingRef}
               </p>
             </div>

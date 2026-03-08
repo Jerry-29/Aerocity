@@ -35,7 +35,16 @@ type DashboardApiData = {
 };
 
 const recentColumns: Column<AdminBooking>[] = [
-  { key: "bookingReference", label: "Reference", sortable: true },
+  {
+    key: "bookingReference",
+    label: "Reference",
+    sortable: true,
+    render: (row) => (
+      <span className="block max-w-[100px] truncate font-mono text-xs font-bold sm:max-w-none sm:text-sm">
+        {row.bookingReference}
+      </span>
+    ),
+  },
   { key: "customerName", label: "Customer", sortable: true },
   { key: "visitDate", label: "Visit Date", sortable: true },
   {
