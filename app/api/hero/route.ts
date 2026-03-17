@@ -5,18 +5,24 @@ import { prisma } from "@/lib/db";
 
 export async function GET(_request: NextRequest) {
   try {
+    console.log("API_HERO: Received request to fetch hero media.");
     let hero: any = null;
     try {
       const active = await prisma.media.findFirst({
         where: { category: "HERO" as any, isPublic: true },
         orderBy: { createdAt: "desc" },
       });
+      console.log("API_HERO: Found active (isPublic: true) hero in DB:", active);
+
       hero =
         active ||
         (await prisma.media.findFirst({
           where: { category: "HERO" as any },
           orderBy: { createdAt: "desc" },
         }));
+      if (!active) {
+        console.log("API_HERO: No active hero found, using fallback hero:", hero);
+      }
     } catch {
       hero = null;
     }
