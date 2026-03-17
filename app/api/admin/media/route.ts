@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
         url,
         type,
         category,
-        isPublic: true,
-        uploadedBy: auth?.userId?.toString() || "admin",
+        isPublic: category === "HERO" ? shouldBeActive : true,
+        uploadedBy: auth.userId.toString(),
       },
     });
 
