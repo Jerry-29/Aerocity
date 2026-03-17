@@ -8,14 +8,29 @@ export const revalidate = 0;
 
 export async function GET(_request: NextRequest) {
   try {
-    // console.log("API_HERO: Received request to fetch hero media.");
+    const startedAt = Date.now();
+    const cid = `hero_${Math.random().toString(36).slice(2, 10)}`;
+    console.log(JSON.stringify({
+      cid,
+      tag: "HERO_API_REQUEST",
+      path: "/api/hero",
+      ua: _request.headers.get("user-agent") || "",
+      ip: _request.headers.get("x-forwarded-for") || "",
+    }));
     let hero: any = null;
     try {
       const active = await prisma.media.findFirst({
         where: { category: "HERO" as any, isPublic: true },
         orderBy: { createdAt: "desc" },
       });
-      // console.log("API_HERO: Found active (isPublic: true) hero in DB:", active);
+      console.log(JSON.stringify({
+        cid,
+        tag: "HERO_DB_ACTIVE",
+        found: !!active,
+        id: active?.id || null,
+        type: active?.type || null,
+        url: active?.url || null,
+      }));
 
       hero =
         active ||
@@ -24,7 +39,12 @@ export async function GET(_request: NextRequest) {
           orderBy: { createdAt: "desc" },
         }));
       if (!active) {
-        // console.log("API_HERO: No active hero found, using fallback hero:", hero);
+        console.log(JSON.stringify({
+          cid,
+          tag: "HERO_DB_FALLBACK",
+          hero_id: hero?.id || null,
+          type: hero?.type || null,
+        }));
       }
     } catch {
       hero = null;
@@ -50,11 +70,26 @@ export async function GET(_request: NextRequest) {
         // ignore
       }
     }
+    console.log(JSON.stringify({
+      cid,
+      tag: "HERO_API_RESPONSE",
+      duration_ms: Date.now() - startedAt,
+      status: 200,
+      hero_id: hero?.id || null,
+      type: hero?.type || null,
+      category: hero?.category || null,
+      has_url: !!hero?.url,
+    }));
     return NextResponse.json(createSuccessResponse("Hero media", hero), {
       status: 200,
     });
   } catch (error: any) {
-    console.error("Get hero error:", error);
+    console.error(JSON.stringify({
+      tag: "HERO_API_ERROR",
+      path: "/api/hero",
+      message: error?.message || String(error),
+      stack: error?.stack || undefined,
+    }));
     return NextResponse.json(
       createErrorResponse("Failed to load hero media", error.message),
       { status: 500 },
