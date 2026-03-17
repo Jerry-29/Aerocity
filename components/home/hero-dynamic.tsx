@@ -22,12 +22,23 @@ export async function HeroDynamic() {
       const res = await fetch(`${baseUrl}/api/hero`, {
         cache: "no-store",
       });
-      if (!res.ok) return null;
+      console.log(`HOME_HERO: Fetching from ${baseUrl}/api/hero. Status: ${res.status}`);
+
+      if (!res.ok) {
+        console.error("HOME_HERO: API fetch failed.");
+        return null;
+      }
       const json = await res.json();
       const hero = json?.data;
-      if (!hero) return null;
+      console.log("HOME_HERO: Received hero data from API:", hero);
+
+      if (!hero) {
+        console.log("HOME_HERO: No hero data was returned from the API.");
+        return null;
+      }
       return hero as MediaItem;
-    } catch {
+    } catch (e) {
+      console.error("HOME_HERO: An unexpected error occurred during fetch:", e);
       return null;
     }
   }
