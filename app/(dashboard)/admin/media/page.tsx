@@ -78,29 +78,64 @@ export default function AdminMediaPage() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const form = new FormData();
-    form.set("file", files[0]);
-    form.set("category", uploadCat);
-    form.set("type", files[0].type.startsWith("video/") ? "VIDEO" : "IMAGE");
-    if (uploadCat === "HERO") {
-      form.set("active", heroActive ? "true" : "false");
-    }
+
+    const file = files[0];
+    const isVideo = file.type.startsWith("video/");
+    const mediaType = isVideo ? "VIDEO" : "IMAGE";
+
     try {
       setLoading(true);
       setError("");
-      const resp = await fetch("/api/admin/media", {
-        method: "POST",
-        body: form,
-      });
-      if (!resp.ok) {
-        const j = await resp.json().catch(() => null);
-        throw new Error(j?.message || "Upload failed");
+
+      // 1. Get Cloudinary signature
+      const sigRes = await apiPost<any>("/api/admin/media/signature", {});
+      if (!isSuccessResponse(sigRes)) {
+        throw new Error(sigRes.message || "Failed to get upload signature");
       }
+
+      const { signature, timestamp, apiKey, cloudName, folder } = sigRes.data;
+
+      // 2. Upload directly to Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("signature", signature);
+      formData.append("timestamp", timestamp.toString());
+      formData.append("api_key", apiKey);
+      formData.append("folder", folder);
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? "video" : "image"}/upload`;
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.error?.message || "Cloudinary upload failed");
+      }
+
+      const uploadData = await uploadRes.json();
+      const cloudinaryUrl = uploadData.secure_url;
+
+      // 3. Save to our database
+      const saveRes = await apiPost<any>("/api/admin/media", {
+        url: cloudinaryUrl,
+        type: mediaType,
+        category: uploadCat,
+        active: uploadCat === "HERO" ? heroActive : true,
+      });
+
+      if (!isSuccessResponse(saveRes)) {
+        throw new Error(saveRes.message || "Failed to save media to database");
+      }
+
       await load();
+      if (fileRef.current) fileRef.current.value = "";
     } catch (err: any) {
+      console.error("Upload error:", err);
       setError(err?.message || "Upload failed");
     } finally {
-      if (fileRef.current) fileRef.current.value = "";
       setLoading(false);
     }
   };
