@@ -19,6 +19,12 @@ export interface AuthenticatedRequest extends NextRequest {
 export async function withAuth(
   request: NextRequest,
 ): Promise<{ auth: AuthRequest | null; error: NextResponse | null }> {
+  // Public routes that should bypass auth
+  const publicApiRoutes = ["/api/hero"];
+  if (publicApiRoutes.includes(request.nextUrl.pathname)) {
+    return { auth: null, error: null };
+  }
+
   const authHeader = request.headers.get("Authorization");
   let token = extractTokenFromHeader(authHeader ?? undefined);
 
