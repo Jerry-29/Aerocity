@@ -8,6 +8,18 @@ import fs from "fs/promises";
 
 export async function GET(request: NextRequest) {
   try {
+    const startedAt = Date.now();
+    const cid = `media_${Math.random().toString(36).slice(2, 10)}`;
+    const q = Object.fromEntries(request.nextUrl.searchParams.entries());
+    console.log(JSON.stringify({
+      cid,
+      tag: "MEDIA_API_REQUEST",
+      method: "GET",
+      path: request.nextUrl.pathname,
+      query: q,
+      ua: request.headers.get("user-agent") || "",
+      ip: request.headers.get("x-forwarded-for") || "",
+    }));
     const { auth, error } = await withAuth(request);
     if (error) return error;
     if (auth?.role !== "ADMIN") {
@@ -34,12 +46,32 @@ export async function GET(request: NextRequest) {
       prisma.media.count({ where }),
     ]);
 
+    console.log(JSON.stringify({
+      cid,
+      tag: "MEDIA_API_RESPONSE",
+      method: "GET",
+      path: request.nextUrl.pathname,
+      duration_ms: Date.now() - startedAt,
+      result_count: items.length,
+      total,
+      page,
+      pageSize,
+      category,
+      type,
+      status: 200,
+    }));
     return NextResponse.json(
       createPaginatedResponse("Media list", items, page, pageSize, total),
       { status: 200 },
     );
   } catch (error: any) {
-    console.error("Admin media list error:", error);
+    console.error(JSON.stringify({
+      tag: "MEDIA_API_ERROR",
+      method: "GET",
+      path: request.url,
+      message: error?.message || String(error),
+      stack: error?.stack || undefined,
+    }));
     return NextResponse.json(
       createErrorResponse("Failed to load media", error.message),
       { status: 500 },
@@ -49,6 +81,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const startedAt = Date.now();
+    const cid = `media_${Math.random().toString(36).slice(2, 10)}`;
+    console.log(JSON.stringify({
+      cid,
+      tag: "MEDIA_API_REQUEST",
+      method: "POST",
+      path: request.nextUrl.pathname,
+      ua: request.headers.get("user-agent") || "",
+      ip: request.headers.get("x-forwarded-for") || "",
+    }));
     const { auth, error } = await withAuth(request);
     if (error) return error;
     if (auth?.role !== "ADMIN") {
@@ -96,12 +138,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log(JSON.stringify({
+      cid,
+      tag: "MEDIA_API_RESPONSE",
+      method: "POST",
+      path: request.nextUrl.pathname,
+      duration_ms: Date.now() - startedAt,
+      saved: { id: media.id, type: media.type, category: media.category, isPublic: media.isPublic },
+      status: 201,
+    }));
     return NextResponse.json(
       createSuccessResponse("Media saved successfully", media),
       { status: 201 },
     );
   } catch (error: any) {
-    console.error("Admin media save error:", error);
+    console.error(JSON.stringify({
+      tag: "MEDIA_API_ERROR",
+      method: "POST",
+      path: request.url,
+      message: error?.message || String(error),
+      stack: error?.stack || undefined,
+    }));
     return NextResponse.json(
       createErrorResponse("Failed to save media", error.message),
       { status: 500 },
