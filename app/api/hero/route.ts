@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSuccessResponse, createErrorResponse } from "@/lib/responses";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(_request: NextRequest) {
   try {
     console.log("API_HERO: Received request to fetch hero media.");
