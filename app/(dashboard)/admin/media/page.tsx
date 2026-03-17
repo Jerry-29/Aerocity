@@ -17,6 +17,7 @@ export default function AdminMediaPage() {
   const [heroActive, setHeroActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState("");
   const [heroId, setHeroId] = useState<number | null>(null);
 
@@ -84,60 +85,80 @@ export default function AdminMediaPage() {
     const mediaType = isVideo ? "VIDEO" : "IMAGE";
 
     try {
-      setLoading(true);
-      setError("");
-
-      // 1. Get Cloudinary signature
-      const sigRes = await apiPost<any>("/api/admin/media/signature", {});
-      if (!isSuccessResponse(sigRes)) {
-        throw new Error(sigRes.message || "Failed to get upload signature");
-      }
-
-      const { signature, timestamp, apiKey, cloudName, folder } = sigRes.data;
-
-      // 2. Upload directly to Cloudinary
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("signature", signature);
-      formData.append("timestamp", timestamp.toString());
-      formData.append("api_key", apiKey);
-      formData.append("folder", folder);
-
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? "video" : "image"}/upload`;
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const errorData = await uploadRes.json();
-        throw new Error(errorData.error?.message || "Cloudinary upload failed");
-      }
-
-      const uploadData = await uploadRes.json();
-      const cloudinaryUrl = uploadData.secure_url;
-
-      // 3. Save to our database
-      const saveRes = await apiPost<any>("/api/admin/media", {
-        url: cloudinaryUrl,
-        type: mediaType,
-        category: uploadCat,
-        active: uploadCat === "HERO" ? heroActive : true,
-      });
-
-      if (!isSuccessResponse(saveRes)) {
-        throw new Error(saveRes.message || "Failed to save media to database");
-      }
-
-      await load();
-      if (fileRef.current) fileRef.current.value = "";
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      setError(err?.message || "Upload failed");
-    } finally {
-      setLoading(false);
-    }
+       setLoading(true);
+       setUploadProgress(10); // Start progress
+       setError("");
+ 
+       // 1. Get Cloudinary signature
+       const sigRes = await apiPost<any>("/api/admin/media/signature", {});
+       if (!isSuccessResponse(sigRes)) {
+         throw new Error(sigRes.message || "Failed to get upload signature");
+       }
+       setUploadProgress(20);
+ 
+       const { signature, timestamp, apiKey, cloudName, folder } = sigRes.data;
+ 
+       // 2. Upload directly to Cloudinary using XHR for progress tracking
+       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? "video" : "image"}/upload`;
+       
+       const cloudinaryData = await new Promise((resolve, reject) => {
+         const xhr = new XMLHttpRequest();
+         xhr.open("POST", uploadUrl);
+ 
+         xhr.upload.onprogress = (event) => {
+           if (event.lengthComputable) {
+             const percent = Math.round((event.loaded / event.total) * 70); // 20% to 90%
+             setUploadProgress(20 + percent);
+           }
+         };
+ 
+         xhr.onload = () => {
+           if (xhr.status >= 200 && xhr.status < 300) {
+             resolve(JSON.parse(xhr.responseText));
+           } else {
+             reject(new Error("Cloudinary upload failed"));
+           }
+         };
+ 
+         xhr.onerror = () => reject(new Error("Network error during upload"));
+ 
+         const formData = new FormData();
+         formData.append("file", file);
+         formData.append("signature", signature);
+         formData.append("timestamp", timestamp.toString());
+         formData.append("api_key", apiKey);
+         formData.append("folder", folder);
+         xhr.send(formData);
+       });
+ 
+       setUploadProgress(95);
+       const uploadData = cloudinaryData as any;
+       const cloudinaryUrl = uploadData.secure_url;
+ 
+       // 3. Save to our database
+       const saveRes = await apiPost<any>("/api/admin/media", {
+         url: cloudinaryUrl,
+         type: mediaType,
+         category: uploadCat,
+         active: uploadCat === "HERO" ? heroActive : true,
+       });
+ 
+       if (!isSuccessResponse(saveRes)) {
+         throw new Error(saveRes.message || "Failed to save media to database");
+       }
+ 
+       setUploadProgress(100);
+       await load();
+       if (fileRef.current) fileRef.current.value = "";
+     } catch (err: any) {
+       console.error("Upload error:", err);
+       setError(err?.message || "Upload failed");
+     } finally {
+       setTimeout(() => {
+         setLoading(false);
+         setUploadProgress(0);
+       }, 500);
+     }
   };
 
   const handleDelete = async () => {
@@ -181,7 +202,19 @@ export default function AdminMediaPage() {
       </div>
 
       {/* Upload Area */}
-      <div className="rounded-xl border-2 border-dashed border-border bg-card p-8 text-center">
+      <div className="relative rounded-xl border-2 border-dashed border-border bg-card p-8 text-center overflow-hidden">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/90 backdrop-blur-[2px]">
+            <div className="mb-4 h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+            <p className="text-sm font-bold text-foreground">Uploading... {uploadProgress}%</p>
+            <div className="mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-muted">
+              <div 
+                className="h-full bg-primary transition-all duration-300 ease-out" 
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
         <input
           ref={fileRef}
           type="file"

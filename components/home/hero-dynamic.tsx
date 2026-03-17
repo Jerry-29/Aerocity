@@ -8,14 +8,18 @@ type MediaItem = {
   type: "IMAGE" | "VIDEO";
   url: string;
   thumbnailUrl?: string | null;
-  category: "GALLERY" | "ATTRACTION" | "GENERAL";
+  category: "GALLERY" | "ATTRACTION" | "GENERAL" | "HERO";
 };
 
 export async function HeroDynamic() {
   async function getHero(): Promise<MediaItem | null> {
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base}/api/hero`, {
+      // Use internal absolute URL for server-side fetch on Vercel
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : getApiBaseUrl();
+      
+      const res = await fetch(`${baseUrl}/api/hero`, {
         cache: "no-store",
       });
       if (!res.ok) return null;
