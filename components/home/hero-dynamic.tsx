@@ -25,7 +25,7 @@ export async function HeroDynamic() {
       console.log(`HOME_HERO: Fetching from ${baseUrl}/api/hero. Status: ${res.status}`);
 
       if (!res.ok) {
-        console.error("HOME_HERO: API fetch failed.");
+        console.error("HOME_HERO: API fetch failed.",res);
         return null;
       }
       const json = await res.json();
